@@ -152,6 +152,7 @@ const SHAPES = {
     cycleNumber: isInt(1),
     seedVersion: isInt(0),
     startPicked: isBool,
+    welcomed: (v: unknown) => v === undefined || isBool(v),
     lastExportAt: orNull(isIso),
     lastExportCycle: orNull(isInt(1)),
   },
@@ -286,7 +287,7 @@ async function replaceAll(d: LogbookDB, t: BackupTables, seed: Seed): Promise<vo
       await d.activities.bulkPut(t.activity)
       await d.dayLogs.bulkPut(t.dayLog)
       await d.state.put(t.state)
-      // Plan rows always match seed.ts (eng review E1): re-apply any seed newer than the file's.
+        // The split always matches seed.ts: re-apply a newer seed. Exercises and plans come from the file.
       await syncSeed(d, seed)
     },
   )
@@ -311,6 +312,7 @@ export async function importBackup(d: LogbookDB, file: BackupFile, seed: Seed = 
     ...file.state,
     seedVersion: file.seedVersion,
     startPicked: true,
+    welcomed: true,
     ...(keepDeviceExport ? { lastExportAt: current.state.lastExportAt, lastExportCycle: file.state.cycleNumber } : {}),
   }
   await replaceAll(d, { ...file, state }, seed)

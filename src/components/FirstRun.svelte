@@ -1,11 +1,18 @@
 <script lang="ts">
   // Wireframe 7: one-time "Which day are you on?", reusing the jump logic.
-  import { pickStartDay, type LogbookDB } from '../lib/db'
+  import { finishWelcome, pickStartDay, type LogbookDB } from '../lib/db'
   import { activeDays } from '../lib/logic'
   import type { TodayData } from '../lib/today'
   import { attempt } from '../lib/toast.svelte'
 
-  let { db, data }: { db: LogbookDB; data: TodayData } = $props()
+  let { db, data, onback }: { db: LogbookDB; data: TodayData; onback?: () => void } = $props()
+
+  async function start() {
+    await attempt(async () => {
+      await pickStartDay(db, chosen)
+      await finishWelcome(db)
+    }, 'Couldn’t save your start day.')
+  }
 
   const days = $derived(activeDays(data.days))
   // svelte-ignore state_referenced_locally
@@ -14,6 +21,7 @@
 </script>
 
 <main class="first-run">
+  {#if onback}<button type="button" class="link back" onclick={onback}>‹ Back</button>{/if}
   <h1 class="display">Which day are you on?</h1>
   <p class="caption">Pick today. The app follows your cycle from here.</p>
   <ul role="radiogroup" aria-label="Cycle day">
@@ -27,15 +35,18 @@
     {/each}
   </ul>
   <div class="bar">
-    <button type="button" class="btn primary" onclick={() => attempt(() => pickStartDay(db, chosen), 'Couldn’t save your start day.')}>
+    <button type="button" class="btn primary" onclick={start}>
       Start with {chosenName} →
     </button>
   </div>
 </main>
 
 <style>
+  .back {
+    align-self: flex-start;
+  }
   .first-run {
-    padding: var(--s6) var(--s4) 0;
+    padding: var(--s5) 0 0;
     min-height: 100dvh;
     display: flex;
     flex-direction: column;

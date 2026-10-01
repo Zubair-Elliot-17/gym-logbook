@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { onboard } from './onboard'
 
 test('first run → log a set → reload → still logged', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Start with Upper →' }).click()
-  await expect(page.getByRole('heading', { name: 'Upper', level: 1 })).toBeVisible()
+  await onboard(page)
 
   // Unknown weight: tapping the set opens the editor
   await page.getByRole('button', { name: /^Bench press, set 1,/ }).click()
@@ -23,8 +22,7 @@ test('first run → log a set → reload → still logged', async ({ page }) => 
 })
 
 test('finish shows the summary card and advances; finished days refuse a jump', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Start with Upper →' }).click()
+  await onboard(page)
   await page.getByRole('button', { name: /^Bench press, set 1,/ }).click()
   await page.getByRole('dialog').getByLabel('Weight (kg)', { exact: true }).fill('50')
   await page.getByRole('dialog').getByRole('button', { name: 'Log set' }).click()

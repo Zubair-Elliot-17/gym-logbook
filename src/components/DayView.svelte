@@ -4,9 +4,10 @@
   import { onMount, tick } from 'svelte'
   import { SvelteSet } from 'svelte/reactivity'
   import {
-    addExerciseToDay,
+    addToPlan,
     addExtraSet,
     createExercise,
+    ensureCatalogExercise,
     deleteSet,
     finishDay,
     goBackDay,
@@ -18,10 +19,11 @@
     type SetRow,
   } from '../lib/db'
   import { formatWeight, type Ghost } from '../lib/logic'
+  import type { CatalogEntry } from '../lib/catalog'
   import type { Equipment, Exercise } from '../lib/seed'
   import { buildLiftRows, dayHeading, finishSummary, loggedCount, type FinishSummary, type LiftRow, type TodayData } from '../lib/today'
   import { attempt, toasts } from '../lib/toast.svelte'
-  import AddExerciseSheet from './AddExerciseSheet.svelte'
+  import ExercisePicker from './ExercisePicker.svelte'
   import ExerciseRow from './ExerciseRow.svelte'
   import FinishCard from './FinishCard.svelte'
   import SetSheet from './SetSheet.svelte'
@@ -31,12 +33,18 @@
   let {
     db,
     data,
+    greet = false,
     onsettings,
+    oneditplan,
     onfinished,
   }: {
     db: LogbookDB
     data: TodayData
+    /** Show "Welcome back" (opened in a later session, nothing logged yet today). */
+    greet?: boolean
     onsettings: () => void
+    /** Open "Your exercises" for today's day. */
+    oneditplan: () => void
     /** After the Finish card closes: the one moment an app update may be offered (5A). */
     onfinished?: () => void
   } = $props()
@@ -45,6 +53,9 @@
   const rows = $derived(isLift ? buildLiftRows(data) : [])
   const total = $derived(loggedCount(rows))
   const allDone = $derived(rows.length > 0 && rows.every((r) => r.done))
+  const hasEntries = $derived(
+    data.activities.length > 0 || data.sets.some((s) => s.cycleNumber === data.pos.cycleNumber && s.cycleDayId === data.pos.cycleDayId),
+  )
   const expanded = new SvelteSet<string>()
 
   type SheetState = { kind: 'set'; exerciseId: string; ghost: Ghost | null } | { kind: 'add' } | { kind: 'skip' } | null
@@ -99,29 +110,31 @@
     }
   }
 
-  async function addToDay(exerciseId: string) {
-    sheet = null
-    if (await attempt(() => addExerciseToDay(db, exerciseId), 'Couldn’t add that exercise.')) pendingAdd = exerciseId
+  // "+ Add exercise" adds to this day's plan for good (it shows up every time this day comes round).
+  const addFail = 'Couldn’t add that exercise.'
+  let lastAdded: string | null = null
+
+  function pick(p: { entry?: CatalogEntry; exercise?: Exercise }) {
+    void attempt(async () => {
+      const ex = p.exercise ?? (await ensureCatalogExercise(db, p.entry!))
+      await addToPlan(db, data.pos.cycleDayId, ex.id)
+      lastAdded = ex.id
+    }, addFail)
   }
 
-  // The added row arrives with the next liveQuery result: then scroll to it, and open the editor if
-  // it has no history (3A).
-  let pendingAdd = $state<string | null>(null)
-  $effect(() => {
-    const id = pendingAdd
-    const row = id ? rows.find((r) => r.exercise.id === id) : undefined
-    if (!id || !row) return
-    pendingAdd = null
-    void tick().then(() => document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: motion(), block: 'start' }))
-    if (row.needsEditor) sheet = { kind: 'set', exerciseId: id, ghost: null }
-  })
+  function create(name: string, equipment: Equipment) {
+    void attempt(async () => {
+      const ex = await createExercise(db, name, equipment)
+      await addToPlan(db, data.pos.cycleDayId, ex.id)
+      lastAdded = ex.id
+    }, addFail)
+  }
 
-  async function create(name: string, equipment: Equipment) {
-    let ex: Exercise | undefined
-    const ok = await attempt(async () => {
-      ex = await createExercise(db, name, equipment)
-    }, 'Couldn’t create that exercise.')
-    if (ok && ex) await addToDay(ex.id)
+  function closePicker() {
+    sheet = null
+    const id = lastAdded
+    lastAdded = null
+    if (id) void tick().then(() => document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: motion(), block: 'start' }))
   }
 
   // ---- finish (6A + 4A) ----
@@ -208,13 +221,18 @@
       /></svg
     >
   </button>
+  {#if greet && !hasEntries}<p class="label greet">Welcome back</p>{/if}
   <h1 class="display">{data.day.name}</h1>
   <p class="label meta">{dayHeading(data)}</p>
 </header>
 
 {#if isLift}
   {#if rows.length === 0}
-    <p class="empty">Nothing planned for {data.day.name}.</p>
+    <div class="empty">
+      <p><strong>No exercises on {data.day.name} yet.</strong></p>
+      <p class="caption">Pick from the list or type in your own, with your sets, weight and reps.</p>
+      <button type="button" class="btn solid" onclick={oneditplan}>Set up {data.day.name}</button>
+    </div>
   {/if}
   {#each rows as row (row.exercise.id)}
     <ExerciseRow
@@ -227,9 +245,12 @@
       ontoggle={() => (expanded.has(row.exercise.id) ? expanded.delete(row.exercise.id) : expanded.add(row.exercise.id))}
     />
   {/each}
-  <div class="add">
-    <button type="button" class="link" onclick={() => (sheet = { kind: 'add' })}>+ Add exercise</button>
-  </div>
+  {#if rows.length > 0}
+    <div class="add">
+      <button type="button" class="link" onclick={() => (sheet = { kind: 'add' })}>+ Add exercise</button>
+      <button type="button" class="link" onclick={oneditplan}>Edit exercises</button>
+    </div>
+  {/if}
 {:else}
   <RestDay {db} {data} />
 {/if}
@@ -256,12 +277,14 @@
     onclose={() => (sheet = null)}
   />
 {:else if sheet?.kind === 'add'}
-  <AddExerciseSheet
+  <ExercisePicker
+    dayId={data.pos.cycleDayId}
+    dayName={data.day.name}
     exercises={data.exercises}
-    exclude={new Set(rows.map((r) => r.exercise.id))}
-    onpick={(ex) => addToDay(ex.id)}
+    added={new Set(rows.map((r) => r.exercise.id))}
+    onpick={pick}
     oncreate={create}
-    onclose={() => (sheet = null)}
+    onclose={closePicker}
   />
 {:else if sheet?.kind === 'skip'}
   <Sheet title="Finish with nothing logged?" onclose={() => (sheet = null)}>
@@ -299,13 +322,24 @@
     line-height: 1.15;
   }
   .empty {
-    padding: var(--s4) 0;
-    color: var(--pencil);
-    border-top: 1px solid var(--rule);
+    display: grid;
+    gap: var(--s2);
+    padding: var(--s4);
+    margin-top: var(--s2);
+    border: 1.5px dotted var(--pencil);
+    border-radius: var(--radius);
+  }
+  .empty .btn {
+    margin-top: var(--s2);
   }
   .add {
+    display: flex;
+    justify-content: space-between;
     border-top: 1px solid var(--rule);
     padding: var(--s2) 0 var(--s6);
+  }
+  .greet {
+    margin-bottom: var(--s2);
   }
   .grow {
     flex: 1;

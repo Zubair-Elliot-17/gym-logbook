@@ -11,7 +11,7 @@ import {
   restoreSnapshot,
   shareExport,
 } from './backup'
-import { LogbookDB, SEED, createExercise, finishDay, getState, jumpTo, logActivity, logSet, openDb } from './db'
+import { LogbookDB, SEED, addToPlan, createExercise, finishDay, getState, jumpTo, logActivity, logSet, openDb, updatePlanRow } from './db'
 
 let d: LogbookDB
 let n = 0
@@ -24,9 +24,11 @@ afterEach(async () => {
 
 /** A small history: Upper with two bench sets and a custom exercise, Lower skipped, a walk on Active rest. */
 async function someHistory() {
+  await addToPlan(d, 'upper', (await createExercise(d, 'Bench press', 'barbell')).id)
   await logSet(d, { exerciseId: 'bench-press', weightKg: 60, reps: 8 })
   await logSet(d, { exerciseId: 'bench-press', weightKg: 60, reps: 7 })
   const shrug = await createExercise(d, 'Shrugs', 'dumbbell')
+  await addToPlan(d, 'upper', shrug.id)
   await logSet(d, { exerciseId: shrug.id, weightKg: 30, reps: 12 })
   await finishDay(d)
   await finishDay(d)
@@ -124,25 +126,25 @@ describe('import', () => {
     await other.delete()
   })
 
-  it('re-applies a newer seed after importing an old-seedVersion file (E1)', async () => {
+  it('restores your exercises and day plans from the file; only the split comes from seed.ts', async () => {
     const shrug = await someHistory()
+    await updatePlanRow(d, 'upper', 'bench-press', { plannedSets: 5, seedWeightKg: 62.5, seedReps: 5 })
     const file = await roundTrip()
-    // pretend the file came from an older plan
-    const old = {
-      ...file,
-      seedVersion: 0,
-      state: { ...file.state, seedVersion: 0 },
-      exercise: file.exercise.map((e) => (e.id === 'bench-press' ? { ...e, name: 'Old bench name' } : e)),
-      dayExercise: file.dayExercise.filter((p) => p.cycleDayId !== 'arms'),
-    }
-    await importBackup(d, old)
 
-    expect((await d.exercises.get('bench-press'))?.name).toBe('Bench press')
-    expect(await d.dayExercises.count()).toBe(SEED.dayExercises.length)
-    expect(await d.sets.count()).toBe(3)
-    expect(await d.activities.count()).toBe(1)
-    expect(await d.exercises.get(shrug.id)).toBeDefined()
-    expect((await getState(d)).seedVersion).toBe(SEED.version)
+    const other = await openDb(new LogbookDB(`backup-plan-${n}`))
+    await importBackup(other, {
+      ...file,
+      cycleDay: file.cycleDay.map((c) => (c.id === 'upper' ? { ...c, name: 'Old name' } : c)),
+      seedVersion: SEED.version - 1,
+      state: { ...file.state, seedVersion: SEED.version - 1 },
+    })
+    expect((await other.cycleDays.get('upper'))?.name).toBe('Upper')
+    expect(await other.dayExercises.get(['upper', 'bench-press'])).toMatchObject({ plannedSets: 5, seedWeightKg: 62.5, seedReps: 5 })
+    expect(await other.dayExercises.get(['upper', shrug.id])).toBeDefined()
+    expect(await other.sets.count()).toBe(3)
+    expect(await other.activities.count()).toBe(1)
+    expect((await getState(other)).seedVersion).toBe(SEED.version)
+    await other.delete()
   })
 
   it('clears drafts and saves a snapshot that can be restored', async () => {

@@ -1,33 +1,39 @@
 import { describe, expect, it } from 'vitest'
-import { cycleDays, dayExercises, exercises } from './seed'
+import { CATALOG, MUSCLES, catalogByName, musclesFor } from './catalog'
+import { cycleDays } from './seed'
 
 describe('seed', () => {
   it('has six days starting on Upper, with two rest days', () => {
     const ordered = [...cycleDays].sort((a, b) => a.order - b.order)
     expect(ordered.map((d) => d.name)).toEqual(['Upper', 'Lower', 'Active rest', 'Recovery', 'Arms', 'Back & Chest'])
     expect(cycleDays.filter((d) => d.type === 'rest')).toHaveLength(2)
+    expect(new Set(cycleDays.map((d) => d.id)).size).toBe(6)
   })
+})
 
-  it('uses unique ids that never collide with ad-hoc custom- ids', () => {
-    const ids = [...cycleDays.map((d) => d.id), ...exercises.map((e) => e.id)]
+describe('exercise library', () => {
+  it('uses unique ids that never collide with typed-in custom- ids', () => {
+    const ids = CATALOG.map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids.some((id) => id.startsWith('custom-'))).toBe(false)
+    expect(new Set(CATALOG.map((c) => c.name.toLowerCase())).size).toBe(CATALOG.length)
   })
 
-  it('plans exercises only on lift days, each referencing a real exercise', () => {
-    const lift = new Set(cycleDays.filter((d) => d.type === 'lift').map((d) => d.id))
-    const exIds = new Set(exercises.map((e) => e.id))
-    for (const de of dayExercises) {
-      expect(lift.has(de.cycleDayId)).toBe(true)
-      expect(exIds.has(de.exerciseId)).toBe(true)
+  it('keeps the v1 ids so logged history still lines up', () => {
+    for (const id of ['bench-press', 'back-squat', 'deadlift', 'hammer-curl', 'pull-up', 'lateral-raise']) {
+      expect(CATALOG.some((c) => c.id === id)).toBe(true)
     }
-    const keys = dayExercises.map((de) => `${de.cycleDayId}+${de.exerciseId}`)
-    expect(new Set(keys).size).toBe(keys.length)
   })
 
-  it('starts with unknown weights and dumbbell steps of 2 kg', () => {
-    expect(dayExercises.every((de) => de.seedWeightKg === null)).toBe(true)
-    expect(exercises.find((e) => e.id === 'hammer-curl')?.stepKg).toBe(2)
-    expect(exercises.find((e) => e.id === 'bench-press')?.stepKg).toBe(2.5)
+  it('has exercises for every muscle group, opening on the day’s muscles first', () => {
+    for (const m of MUSCLES) expect(CATALOG.some((c) => c.muscle === m)).toBe(true)
+    expect(musclesFor('back-chest').slice(0, 2)).toEqual(['Back', 'Chest'])
+    expect(musclesFor('arms').slice(0, 2)).toEqual(['Biceps', 'Triceps'])
+    expect(musclesFor('upper')).toHaveLength(MUSCLES.length)
+  })
+
+  it('finds entries by name, ignoring case and spaces', () => {
+    expect(catalogByName('  bench PRESS ')?.id).toBe('bench-press')
+    expect(catalogByName('Zercher squat')).toBeUndefined()
   })
 })

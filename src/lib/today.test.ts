@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { LogbookDB, addExerciseToDay, createExercise, finishDay, jumpTo, logActivity, logSet, openDb } from './db'
+import { LogbookDB, addExerciseToDay, addToPlan, createExercise, finishDay, jumpTo, logActivity, logSet, openDb } from './db'
 import { buildLiftRows, dayHeading, daysAgo, finishSummary, lastFinish, loadToday, pickBanner, shortName } from './today'
 
 let d: LogbookDB
@@ -11,8 +11,20 @@ afterEach(async () => {
   await d.delete()
 })
 
+/** Upper's plan as a user might set it up. */
+async function planUpper() {
+  for (const n of ['Bench press', 'Bent-over row', 'Overhead press', 'Lat pulldown', 'Lateral raise']) {
+    await addToPlan(d, 'upper', (await createExercise(d, n, 'barbell')).id)
+  }
+}
+
 describe('today view model', () => {
-  it('builds rows for the plan with seed ghosts and the heading', async () => {
+  it('an empty day has no rows', async () => {
+    expect(buildLiftRows(await loadToday(d))).toEqual([])
+  })
+
+  it('builds rows for your plan with unknown-weight ghosts and the heading', async () => {
+    await planUpper()
     const data = await loadToday(d)
     const rows = buildLiftRows(data)
     expect(rows.map((r) => r.exercise.id)).toEqual(['bench-press', 'bent-over-row', 'overhead-press', 'lat-pulldown', 'lateral-raise'])
@@ -22,6 +34,7 @@ describe('today view model', () => {
   })
 
   it('shows an added exercise with no history as needing the editor, then marks PRs and done rows', async () => {
+    await planUpper()
     const ex = await createExercise(d, 'Cable crunch', 'machine')
     await addExerciseToDay(d, ex.id)
     let rows = buildLiftRows(await loadToday(d))
@@ -34,6 +47,7 @@ describe('today view model', () => {
   })
 
   it('summarises a finished lifting day, a skipped one and a rest day', async () => {
+    await planUpper()
     for (const w of [60, 62.5]) await logSet(d, { exerciseId: 'bench-press', weightKg: w, reps: 8 })
     let data = await loadToday(d)
     expect(finishSummary(data, buildLiftRows(data))).toEqual({

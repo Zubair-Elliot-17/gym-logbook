@@ -1,7 +1,9 @@
 <script lang="ts">
   // Wireframe 8: status notices on top, then Export / Import / Restore snapshot / Go back a day /
   // Install / Update.
+  import { liveQuery } from 'dexie'
   import { onMount } from 'svelte'
+  import { activeDays } from '../lib/logic'
   import {
     ImportError,
     backupOverdue,
@@ -26,6 +28,7 @@
     updateReady,
     onupdate,
     onclose,
+    oneditplan,
   }: {
     db: LogbookDB
     data: TodayData
@@ -34,7 +37,21 @@
     updateReady: boolean
     onupdate: () => void
     onclose: () => void
+    oneditplan: (dayId: string) => void
   } = $props()
+
+  const liftDays = $derived(activeDays(data.days).filter((d) => d.type === 'lift'))
+  let planCounts = $state.raw<Record<string, number>>({})
+  onMount(() => {
+    const sub = liveQuery(() => db.dayExercises.toArray()).subscribe({
+      next: (rows) => {
+        const c: Record<string, number> = {}
+        for (const r of rows) c[r.cycleDayId] = (c[r.cycleDayId] ?? 0) + 1
+        planCounts = c
+      },
+    })
+    return () => sub.unsubscribe()
+  })
 
   let snapshot = $state(false)
   let reading = $state(false)
@@ -147,6 +164,19 @@
   {/if}
 </div>
 
+<h2 class="label section">Your exercises</h2>
+<ul class="list">
+  {#each liftDays as d (d.id)}
+    {@const n = planCounts[d.id] ?? 0}
+    <li>
+      <button type="button" class="row" onclick={() => oneditplan(d.id)}>
+        <span>{d.name}</span><span class="caption">{n === 0 ? 'not set up' : `${n} exercise${n === 1 ? '' : 's'}`} ›</span>
+      </button>
+    </li>
+  {/each}
+</ul>
+
+<h2 class="label section">Backup &amp; app</h2>
 <ul class="list">
   {#if updateReady}
     <li><button type="button" class="row strong" onclick={onupdate}><span>Update the app</span><span>›</span></button></li>
@@ -239,6 +269,9 @@
     text-decoration: underline;
     text-underline-offset: 3px;
     font-size: inherit;
+  }
+  .section {
+    margin: var(--s4) 0 var(--s1);
   }
   .list {
     list-style: none;

@@ -112,41 +112,30 @@ describe('lastTime', () => {
   })
 })
 
-describe('exerciseOrder (carry-over)', () => {
+describe('exerciseOrder', () => {
   const upperPlan = [plan({ exerciseId: 'overhead-press', order: 2 }), plan({ exerciseId: 'bench-press', order: 1 })]
 
   it('lists the plan in order', () => {
-    expect(exerciseOrder({ pos: { cycleNumber: 1, cycleDayId: 'upper' }, plan: upperPlan, sets: [], dayLogs: [] })).toEqual([
+    expect(exerciseOrder({ pos: { cycleNumber: 1, cycleDayId: 'upper' }, plan: upperPlan, sets: [] })).toEqual([
       'bench-press',
       'overhead-press',
     ])
   })
 
-  it('carries over off-plan exercises from the previous occurrence, then today, then draft', () => {
-    const prev = [
-      set({ exerciseId: 'custom-shrug', cycleNumber: 1, cycleDayId: 'upper' }),
-      set({ exerciseId: 'bench-press', cycleNumber: 1, cycleDayId: 'upper' }),
-    ]
-    const today = [set({ exerciseId: 'custom-dip', cycleNumber: 2, cycleDayId: 'upper' })]
+  it('adds off-plan exercises logged today, then the draft; never ones from earlier sessions', () => {
+    const earlier = set({ exerciseId: 'custom-shrug', cycleNumber: 1, cycleDayId: 'upper' })
+    const today = set({ exerciseId: 'custom-dip', cycleNumber: 2, cycleDayId: 'upper' })
     const order = exerciseOrder({
       pos: { cycleNumber: 2, cycleDayId: 'upper' },
       plan: upperPlan,
-      sets: [...today, ...prev],
-      dayLogs: [log(1, 'upper')],
+      sets: [today, earlier],
       draftAdded: ['custom-face-pull', 'bench-press'],
     })
-    expect(order).toEqual(['bench-press', 'overhead-press', 'custom-shrug', 'custom-dip', 'custom-face-pull'])
+    expect(order).toEqual(['bench-press', 'overhead-press', 'custom-dip', 'custom-face-pull'])
   })
 
-  it('ignores other days and skipped occurrences', () => {
-    const otherDay = set({ exerciseId: 'custom-shrug', cycleNumber: 1, cycleDayId: 'arms' })
-    const order = exerciseOrder({
-      pos: { cycleNumber: 2, cycleDayId: 'upper' },
-      plan: upperPlan,
-      sets: [otherDay],
-      dayLogs: [log(1, 'arms'), log(1, 'upper', true)],
-    })
-    expect(order).toEqual(['bench-press', 'overhead-press'])
+  it('an empty day shows nothing', () => {
+    expect(exerciseOrder({ pos: { cycleNumber: 1, cycleDayId: 'arms' }, plan: upperPlan, sets: [] })).toEqual([])
   })
 })
 

@@ -67,7 +67,7 @@ export function buildLiftRows(data: TodayData): LiftRow[] {
   const { pos, plan, sets, dayLogs, draft } = data
   const byId = new Map(data.exercises.map((e) => [e.id, e]))
   const today = isToday(pos)
-  return exerciseOrder({ pos, plan, sets, dayLogs, draftAdded: draft.added }).flatMap((id) => {
+  return exerciseOrder({ pos, plan, sets, draftAdded: draft.added }).flatMap((id) => {
     const exercise = byId.get(id)
     if (!exercise) return []
     const planRow = plan.find((p) => p.exerciseId === id && p.cycleDayId === pos.cycleDayId)

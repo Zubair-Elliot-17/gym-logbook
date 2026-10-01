@@ -5,6 +5,8 @@
   import { onMount } from 'svelte'
   import DayView from './components/DayView.svelte'
   import FirstRun from './components/FirstRun.svelte'
+  import PlanEditor from './components/PlanEditor.svelte'
+  import Welcome from './components/Welcome.svelte'
   import Settings from './components/Settings.svelte'
   import Toasts from './components/Toasts.svelte'
   import WeekStrip from './components/WeekStrip.svelte'
@@ -17,7 +19,10 @@
   let status = $state<'loading' | 'error' | 'ready'>('loading')
   let data = $state.raw<TodayData | null>(null)
   let sub: { unsubscribe(): void } | undefined
-  let view = $state<'today' | 'settings'>('today')
+  type View = { kind: 'today' } | { kind: 'settings' } | { kind: 'plan'; dayId: string; back: 'today' | 'settings' }
+  let view = $state<View>({ kind: 'today' })
+  /** Welcome was finished in an earlier session: greet with "Welcome back" (not right after the welcome). */
+  let returning = $state<boolean | null>(null)
   const standalone = isStandalone()
 
   async function start() {
@@ -33,6 +38,7 @@
     void requestPersistentStorage()
     sub = liveQuery(() => loadToday(db)).subscribe({
       next: (v) => {
+        returning ??= v.state.welcomed === true
         data = v
         status = 'ready'
       },
@@ -62,9 +68,16 @@
   }
 
   function openSettings() {
-    view = 'settings'
+    view = { kind: 'settings' }
     window.scrollTo(0, 0)
   }
+
+  function openPlan(dayId: string, back: 'today' | 'settings') {
+    view = { kind: 'plan', dayId, back }
+    window.scrollTo(0, 0)
+  }
+
+  const planDay = $derived(view.kind === 'plan' && data ? data.days.find((d) => d.id === (view as { dayId: string }).dayId) : undefined)
 
   const hasEntries = $derived(
     data !== null &&
@@ -86,12 +99,22 @@
     <div class="skel row"></div>
     <div class="skel row"></div>
   </main>
+{:else if !data.state.welcomed}
+  <div class="col"><Welcome {db} {data} {standalone} /></div>
 {:else if !data.state.startPicked}
-  <div class="col">
-    {#if !standalone}{@render bannerText('install')}{/if}
-    <FirstRun {db} {data} />
-  </div>
-{:else if view === 'settings'}
+  <div class="col"><FirstRun {db} {data} /></div>
+{:else if view.kind === 'plan' && planDay}
+  {@const back = view.back}
+  <main class="col">
+    <PlanEditor
+      {db}
+      dayId={planDay.id}
+      dayName={planDay.name}
+      backLabel={back === 'settings' ? '‹ Settings' : '‹ Today'}
+      onback={() => (view = { kind: back })}
+    />
+  </main>
+{:else if view.kind === 'settings'}
   <main class="col">
     <Settings
       {db}
@@ -100,14 +123,15 @@
       offlineReady={$offlineReady}
       updateReady={$needRefresh}
       onupdate={updateApp}
-      onclose={() => (view = 'today')}
+      onclose={() => (view = { kind: 'today' })}
+      oneditplan={(dayId) => openPlan(dayId, 'settings')}
     />
   </main>
 {:else}
   <main class="col">
     {#if banner}{@render bannerText(banner)}{/if}
     <WeekStrip {db} {data} {hasEntries} />
-    <DayView {db} {data} onsettings={openSettings} onfinished={afterFinish} />
+    <DayView {db} {data} greet={returning === true} onsettings={openSettings} onfinished={afterFinish} oneditplan={() => openPlan(data!.pos.cycleDayId, 'today')} />
   </main>
 {/if}
 
