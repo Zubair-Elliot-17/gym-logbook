@@ -1,0 +1,408 @@
+// Dexie schema, seed sync and every write the UI makes.
+// The UI renders only committed rows (liveQuery); these functions throw on a rejected write and
+// change nothing, so the caller shows the retry toast.
+
+import Dexie, { type Table } from 'dexie'
+import {
+  SEED_VERSION,
+  cycleDays as seedDays,
+  dayExercises as seedPlan,
+  exercises as seedExercises,
+  stepFor,
+  type CycleDay,
+  type DayExercise,
+  type Equipment,
+  type Exercise,
+} from './seed'
+import { activeDays, checkJump, nextDay, type JumpResult, type Position } from './logic'
+
+export interface SetRow {
+  id: string
+  loggedAt: string
+  cycleNumber: number
+  cycleDayId: string
+  exerciseId: string
+  setIndex: number
+  weightKg: number
+  reps: number
+}
+
+export interface Activity {
+  id: string
+  loggedAt: string
+  cycleNumber: number
+  cycleDayId: string
+  kind: string
+  minutes: number
+}
+
+export interface DayLog {
+  id: string
+  cycleNumber: number
+  cycleDayId: string
+  finishedAt: string
+  /** A lifting day finished with zero sets. Rest days are never skipped: resting counts. */
+  skipped: boolean
+  /** State before this Finish, so Go back a day restores it exactly (including a wrap). */
+  prevCycleDayId: string
+  prevCycleNumber: number
+}
+
+export interface AppState {
+  id: 'app'
+  currentCycleDayId: string
+  cycleNumber: number
+  /** Seed version the plan rows match. syncSeed re-applies seed.ts when SEED_VERSION is newer. */
+  seedVersion: number
+  /** The first-run "Which day are you on?" prompt has been answered. */
+  startPicked: boolean
+  lastExportAt: string | null
+}
+
+/** Unlogged tweaks for one day, so they survive iOS killing the app mid-workout (eng review E4). */
+export interface Draft {
+  cycleNumber: number
+  cycleDayId: string
+  /** exerciseId → setIndex → adjusted weight of an unlogged ghost */
+  weightOverrides: Record<string, Record<number, number>>
+  /** exerciseId → number of "+ set" ghosts */
+  extraSets: Record<string, number>
+  /** Exercises added via "Add exercise" that may have no sets yet */
+  added: string[]
+}
+
+/** Dexie schema version. Export `formatVersion` is kept equal to it (eng review #3). */
+export const SCHEMA_VERSION = 1
+
+export class LogbookDB extends Dexie {
+  declare cycleDays: Table<CycleDay, string>
+  declare exercises: Table<Exercise, string>
+  declare dayExercises: Table<DayExercise, [string, string]>
+  declare sets: Table<SetRow, string>
+  declare activities: Table<Activity, string>
+  declare dayLogs: Table<DayLog, string>
+  declare state: Table<AppState, string>
+  declare drafts: Table<Draft, [number, string]>
+
+  constructor(name = 'gym-logbook') {
+    super(name)
+    this.version(SCHEMA_VERSION).stores({
+      cycleDays: 'id, order',
+      exercises: 'id, name',
+      dayExercises: '[cycleDayId+exerciseId], cycleDayId',
+      sets: 'id, [exerciseId+loggedAt], [cycleNumber+cycleDayId], cycleDayId, loggedAt',
+      activities: 'id, [cycleNumber+cycleDayId], cycleDayId',
+      dayLogs: 'id, &[cycleNumber+cycleDayId], cycleDayId, finishedAt',
+      state: 'id',
+      drafts: '[cycleNumber+cycleDayId]',
+    })
+  }
+}
+
+export const db = new LogbookDB()
+
+// ---- Helpers ----
+
+let lastMs = 0
+/** Strictly increasing ISO timestamps, so loggedAt/finishedAt order is the tap order even within 1 ms. */
+export function nowIso(): string {
+  lastMs = Math.max(Date.now(), lastMs + 1)
+  return new Date(lastMs).toISOString()
+}
+
+const uuid = () => crypto.randomUUID()
+const posKey = (p: Position): [number, string] => [p.cycleNumber, p.cycleDayId]
+
+export async function getState(d: LogbookDB): Promise<AppState> {
+  const st = await d.state.get('app')
+  if (!st) throw new Error('Database not seeded: call openDb first')
+  return st
+}
+
+export const positionOf = (st: AppState): Position => ({
+  cycleNumber: st.cycleNumber,
+  cycleDayId: st.currentCycleDayId,
+})
+
+function checkSet(weightKg: number, reps: number) {
+  if (!Number.isFinite(weightKg) || weightKg < 0) throw new RangeError('Weight must be 0 kg or more')
+  if (!Number.isInteger(reps) || reps < 1) throw new RangeError('Reps must be a whole number of 1 or more')
+}
+
+function checkActivity(kind: string, minutes: number) {
+  if (kind.trim() === '') throw new RangeError('Activity needs a name')
+  if (!Number.isInteger(minutes) || minutes < 1) throw new RangeError('Minutes must be 1 or more')
+}
+
+async function hasEntries(d: LogbookDB, pos: Position): Promise<boolean> {
+  const k = posKey(pos)
+  return (
+    (await d.sets.where('[cycleNumber+cycleDayId]').equals(k).count()) > 0 ||
+    (await d.activities.where('[cycleNumber+cycleDayId]').equals(k).count()) > 0
+  )
+}
+
+// ---- Open + seed ----
+
+/** Open the database and seed or upgrade the plan. Throws if IndexedDB can't open (DB error screen). */
+export async function openDb(d: LogbookDB = db): Promise<LogbookDB> {
+  await d.open()
+  await syncSeed(d)
+  return d
+}
+
+/**
+ * Make plan rows match seed.ts. Runs on first run (empty DB) and whenever SEED_VERSION is newer than
+ * state.seedVersion (a plan change, or after importing an older backup: eng review E1). Never on
+ * every load.
+ * - Upserts seed cycleDays/exercises by id; dayExercise rows are replaced with the seed plan.
+ * - A day dropped from the seed is archived if it has history, otherwise deleted.
+ * - An exercise dropped from the seed is kept if it has sets, otherwise deleted.
+ * - Ad-hoc `custom-` exercises are never touched.
+ * - If the current day is no longer active, state moves to the first active day.
+ */
+export interface Seed {
+  version: number
+  cycleDays: CycleDay[]
+  exercises: Exercise[]
+  dayExercises: DayExercise[]
+}
+
+export const SEED: Seed = { version: SEED_VERSION, cycleDays: seedDays, exercises: seedExercises, dayExercises: seedPlan }
+
+export async function syncSeed(d: LogbookDB, seed: Seed = SEED): Promise<void> {
+  await d.transaction(
+    'rw',
+    [d.cycleDays, d.exercises, d.dayExercises, d.sets, d.activities, d.dayLogs, d.state],
+    async () => {
+      const st = await d.state.get('app')
+      if (st && st.seedVersion >= seed.version) return
+
+      const seedDayIds = new Set(seed.cycleDays.map((x) => x.id))
+      for (const day of await d.cycleDays.toArray()) {
+        if (seedDayIds.has(day.id)) continue
+        const used =
+          (await d.sets.where('cycleDayId').equals(day.id).count()) +
+          (await d.activities.where('cycleDayId').equals(day.id).count()) +
+          (await d.dayLogs.where('cycleDayId').equals(day.id).count())
+        if (used > 0) await d.cycleDays.put({ ...day, archived: true })
+        else await d.cycleDays.delete(day.id)
+      }
+      await d.cycleDays.bulkPut(seed.cycleDays)
+
+      const seedExIds = new Set(seed.exercises.map((x) => x.id))
+      for (const ex of await d.exercises.toArray()) {
+        if (seedExIds.has(ex.id) || ex.id.startsWith('custom-')) continue
+        const used = await d.sets
+          .where('[exerciseId+loggedAt]')
+          .between([ex.id, Dexie.minKey], [ex.id, Dexie.maxKey])
+          .count()
+        if (used === 0) await d.exercises.delete(ex.id)
+      }
+      await d.exercises.bulkPut(seed.exercises)
+
+      await d.dayExercises.clear()
+      await d.dayExercises.bulkPut(seed.dayExercises)
+
+      const active = activeDays(await d.cycleDays.toArray())
+      if (st) {
+        const stillActive = active.some((x) => x.id === st.currentCycleDayId)
+        await d.state.put({
+          ...st,
+          seedVersion: seed.version,
+          currentCycleDayId: stillActive ? st.currentCycleDayId : active[0].id,
+        })
+      } else {
+        await d.state.put({
+          id: 'app',
+          currentCycleDayId: active[0].id,
+          cycleNumber: 1,
+          seedVersion: seed.version,
+          startPicked: false,
+          lastExportAt: null,
+        })
+      }
+    },
+  )
+}
+
+// ---- Sets ----
+
+/** Log a set on the current day. setIndex is its position among this exercise's sets today. */
+export async function logSet(
+  d: LogbookDB,
+  input: { exerciseId: string; weightKg: number; reps: number },
+): Promise<SetRow> {
+  checkSet(input.weightKg, input.reps)
+  return d.transaction('rw', [d.sets, d.state], async () => {
+    const pos = positionOf(await getState(d))
+    const setIndex = await d.sets
+      .where('[cycleNumber+cycleDayId]')
+      .equals(posKey(pos))
+      .filter((s) => s.exerciseId === input.exerciseId)
+      .count()
+    const row: SetRow = { id: uuid(), loggedAt: nowIso(), ...pos, setIndex, ...input }
+    await d.sets.add(row)
+    return row
+  })
+}
+
+export async function updateSet(d: LogbookDB, id: string, patch: { weightKg: number; reps: number }): Promise<void> {
+  checkSet(patch.weightKg, patch.reps)
+  const n = await d.sets.update(id, patch)
+  if (n === 0) throw new Error('Set not found')
+}
+
+export async function deleteSet(d: LogbookDB, id: string): Promise<void> {
+  await d.sets.delete(id)
+}
+
+// ---- Activities (rest days) ----
+
+export async function logActivity(d: LogbookDB, input: { kind: string; minutes: number }): Promise<Activity> {
+  checkActivity(input.kind, input.minutes)
+  return d.transaction('rw', [d.activities, d.state], async () => {
+    const pos = positionOf(await getState(d))
+    const row: Activity = { id: uuid(), loggedAt: nowIso(), ...pos, kind: input.kind.trim(), minutes: input.minutes }
+    await d.activities.add(row)
+    return row
+  })
+}
+
+export async function updateActivity(d: LogbookDB, id: string, patch: { kind: string; minutes: number }): Promise<void> {
+  checkActivity(patch.kind, patch.minutes)
+  const n = await d.activities.update(id, { kind: patch.kind.trim(), minutes: patch.minutes })
+  if (n === 0) throw new Error('Activity not found')
+}
+
+export async function deleteActivity(d: LogbookDB, id: string): Promise<void> {
+  await d.activities.delete(id)
+}
+
+// ---- Exercises ----
+
+/** "Add exercise" → Create. A name matching an existing exercise (any case) picks that one instead. */
+export async function createExercise(d: LogbookDB, name: string, equipment: Equipment): Promise<Exercise> {
+  const trimmed = name.trim()
+  if (trimmed === '') throw new RangeError('Exercise needs a name')
+  return d.transaction('rw', d.exercises, async () => {
+    const existing = await d.exercises.filter((e) => e.name.toLowerCase() === trimmed.toLowerCase()).first()
+    if (existing) return existing
+    const ex: Exercise = { id: `custom-${uuid()}`, name: trimmed, stepKg: stepFor(equipment) }
+    await d.exercises.add(ex)
+    return ex
+  })
+}
+
+// ---- Draft ----
+
+export function emptyDraft(pos: Position): Draft {
+  return { ...pos, weightOverrides: {}, extraSets: {}, added: [] }
+}
+
+/** The current day's draft. Keyed by cycle + day, so another day's draft is never returned. */
+export async function getDraft(d: LogbookDB, pos: Position): Promise<Draft> {
+  return (await d.drafts.get(posKey(pos))) ?? emptyDraft(pos)
+}
+
+/** Apply a change to the current day's draft and save it. */
+export async function updateDraft(d: LogbookDB, change: (draft: Draft) => void): Promise<Draft> {
+  return d.transaction('rw', [d.drafts, d.state], async () => {
+    const pos = positionOf(await getState(d))
+    const draft = structuredClone(await getDraft(d, pos))
+    change(draft)
+    await d.drafts.put(draft)
+    return draft
+  })
+}
+
+export const setGhostWeight = (d: LogbookDB, exerciseId: string, setIndex: number, weightKg: number) => {
+  checkSet(weightKg, 1)
+  return updateDraft(d, (dr) => {
+    dr.weightOverrides[exerciseId] = { ...dr.weightOverrides[exerciseId], [setIndex]: weightKg }
+  })
+}
+
+export const addExtraSet = (d: LogbookDB, exerciseId: string) =>
+  updateDraft(d, (dr) => {
+    dr.extraSets[exerciseId] = (dr.extraSets[exerciseId] ?? 0) + 1
+  })
+
+export const addExerciseToDay = (d: LogbookDB, exerciseId: string) =>
+  updateDraft(d, (dr) => {
+    if (!dr.added.includes(exerciseId)) dr.added.push(exerciseId)
+  })
+
+// ---- Cycle ----
+
+/**
+ * Finish the current day: write its dayLog, clear its draft, advance to the next active day
+ * (wrapping into cycle K+1). A lifting day with zero sets is recorded as skipped; the UI confirms first.
+ */
+export async function finishDay(d: LogbookDB): Promise<{ dayLog: DayLog; next: Position }> {
+  return d.transaction('rw', [d.cycleDays, d.sets, d.dayLogs, d.state, d.drafts], async () => {
+    const st = await getState(d)
+    const pos = positionOf(st)
+    const day = await d.cycleDays.get(pos.cycleDayId)
+    if (!day) throw new Error(`Unknown day ${pos.cycleDayId}`)
+    const setCount = await d.sets.where('[cycleNumber+cycleDayId]').equals(posKey(pos)).count()
+    const dayLog: DayLog = {
+      id: uuid(),
+      ...pos,
+      finishedAt: nowIso(),
+      skipped: day.type === 'lift' && setCount === 0,
+      prevCycleDayId: pos.cycleDayId,
+      prevCycleNumber: pos.cycleNumber,
+    }
+    await d.dayLogs.add(dayLog)
+    await d.drafts.delete(posKey(pos))
+    const next = nextDay(pos, await d.cycleDays.toArray())
+    await d.state.put({ ...st, currentCycleDayId: next.cycleDayId, cycleNumber: next.cycleNumber })
+    return { dayLog, next }
+  })
+}
+
+/**
+ * Undo the most recent Finish: delete that dayLog and restore the state it recorded. Logged sets stay
+ * on the day they were logged. Clears the draft of the day being left. Returns null if nothing to undo.
+ */
+export async function goBackDay(d: LogbookDB): Promise<DayLog | null> {
+  return d.transaction('rw', [d.dayLogs, d.state, d.drafts], async () => {
+    const latest = await d.dayLogs.orderBy('finishedAt').last()
+    if (!latest) return null
+    const st = await getState(d)
+    await d.drafts.delete(posKey(positionOf(st)))
+    await d.dayLogs.delete(latest.id)
+    await d.state.put({ ...st, currentCycleDayId: latest.prevCycleDayId, cycleNumber: latest.prevCycleNumber })
+    return latest
+  })
+}
+
+/** "Make <day> today?" Never changes the cycle number. State is unchanged unless the result is 'ok'. */
+export async function jumpTo(d: LogbookDB, targetId: string): Promise<JumpResult> {
+  return d.transaction('rw', [d.cycleDays, d.sets, d.activities, d.dayLogs, d.state], async () => {
+    const st = await getState(d)
+    const pos = positionOf(st)
+    const result = checkJump(
+      pos,
+      targetId,
+      await d.cycleDays.toArray(),
+      await d.dayLogs
+        .where('[cycleNumber+cycleDayId]')
+        .between([pos.cycleNumber, Dexie.minKey], [pos.cycleNumber, Dexie.maxKey])
+        .toArray(),
+      await hasEntries(d, pos),
+    )
+    if (result === 'ok') await d.state.put({ ...st, currentCycleDayId: targetId })
+    return result
+  })
+}
+
+/** First-run "Which day are you on?". */
+export async function pickStartDay(d: LogbookDB, targetId: string): Promise<JumpResult> {
+  const result = await jumpTo(d, targetId)
+  if (result === 'ok' || result === 'same-day') {
+    await d.state.update('app', { startPicked: true })
+  }
+  return result
+}
