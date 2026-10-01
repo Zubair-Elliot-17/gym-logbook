@@ -86,7 +86,7 @@
     <button type="button" class="summary" onclick={ontoggle} aria-expanded="false">
       <span class="name">{row.exercise.name}</span>
       <span class="done-mark num">✓ {loggedCount}</span>
-      {#if row.prIds.size}<span class="pr">PR</span>{/if}
+      {#if row.prIds.size}<span class="pr">▲ PR</span>{/if}
     </button>
   {:else}
     <div class="head">
@@ -124,8 +124,7 @@
             onclick={() => click(g)}
           >
             <span>{text(g)}</span>
-            {#if g.logged}<span class="check" aria-hidden="true">✓</span>{/if}
-            {#if g.logged && row.prIds.has(g.logged.id)}<span class="pr badge">PR</span>{/if}
+            {#if g.logged && row.prIds.has(g.logged.id)}<span class="pr badge" aria-hidden="true">▲ PR</span>{/if}
           </button>
         {/each}
       </div>
@@ -145,8 +144,8 @@
 
 <style>
   .row {
-    padding: var(--s4) 0;
-    border-top: 1px dashed var(--line);
+    padding: var(--s4) 0 var(--s3);
+    border-top: 1px solid var(--rule);
     scroll-margin-top: var(--s2);
   }
   .row.collapsed {
@@ -159,11 +158,11 @@
   }
   .name {
     font-size: 17px;
-    font-weight: 600;
+    font-weight: 700;
   }
   .summary {
     width: 100%;
-    min-height: var(--tap);
+    min-height: 52px;
     display: flex;
     align-items: center;
     gap: var(--s3);
@@ -173,65 +172,68 @@
     flex: 1;
   }
   .done-mark {
-    font-size: 18px;
+    font-size: 16px;
   }
   .last {
-    display: block;
-    min-height: var(--tap);
-    text-align: left;
-    margin-top: -6px;
-    text-decoration: underline;
-    text-decoration-color: var(--line);
-    text-underline-offset: 3px;
-  }
-  p.last {
-    text-decoration: none;
     display: flex;
     align-items: center;
+    gap: 5px;
+    min-height: 40px;
+    text-align: left;
   }
   .last .num {
-    font-size: 15px;
+    font-size: var(--fs-caption);
     color: var(--ink);
+  }
+  p.last {
+    min-height: 40px;
   }
   .sets {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--s2);
   }
+  /* Ghost: a dotted pencil outline of last time's set */
   .ghost {
     position: relative;
     isolation: isolate;
-    overflow: hidden;
     min-height: var(--set-h);
-    border: 1px dashed var(--line);
+    border: 1.5px dotted var(--pencil);
     border-radius: var(--radius);
-    color: var(--muted);
+    color: var(--pencil);
     font-size: var(--fs-num);
+    white-space: nowrap;
     -webkit-touch-callout: none;
     user-select: none;
     -webkit-user-select: none;
   }
   .ghost.first {
     width: 100%;
-    font-family: var(--font-ui);
+    font-family: var(--font-body);
     font-size: var(--fs-body);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--ink);
   }
+  /* Next: ruled in, ready to log */
   .ghost.next {
-    background: var(--next);
+    background: var(--sheet);
     border: 2px solid var(--ink);
     color: var(--ink);
   }
+  /* Logged: an inked stamp (double ring) */
   .ghost.logged {
     background: var(--ink);
-    border: 2px solid var(--ink);
+    border: 0;
     color: var(--paper);
+    box-shadow:
+      inset 0 0 0 3px var(--ink),
+      inset 0 0 0 4px var(--paper);
+    animation: stamp 120ms var(--ease-out);
   }
-  .check {
-    font-family: var(--font-ui);
-    font-size: 13px;
-    margin-left: 4px;
+  @keyframes stamp {
+    from {
+      transform: scale(0.94);
+    }
   }
   /* 11A: hold fill, left to right over 450 ms */
   .ghost.pressing::before {
@@ -239,7 +241,8 @@
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: color-mix(in srgb, var(--ink) 18%, var(--next));
+    border-radius: inherit;
+    background: var(--next);
     transform-origin: left;
     animation: fill 450ms linear forwards;
   }
@@ -252,6 +255,9 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
+    .ghost.logged {
+      animation: none;
+    }
     .ghost.pressing::before {
       transform: none;
       opacity: 0;
@@ -263,20 +269,27 @@
       }
     }
   }
+  /* PR: a red surveyor's benchmark stamp */
   .pr {
-    font-family: var(--font-ui);
+    font-family: var(--font-display);
     font-size: var(--fs-badge);
-    font-weight: 600;
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    border-radius: 4px;
-    padding: 0 4px;
+    font-weight: 800;
+    font-stretch: 75%;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--stamp);
     background: var(--paper);
+    border: 2px solid var(--stamp);
+    border-radius: 3px;
+    padding: 1px 5px;
+    transform: rotate(-4deg);
+    white-space: nowrap;
   }
   .badge {
     position: absolute;
-    top: 3px;
-    right: 3px;
+    top: -9px;
+    right: -6px;
+    transform: rotate(-6deg);
     line-height: 1.3;
   }
   .controls {
@@ -291,6 +304,7 @@
   }
   .adjust .btn {
     width: 56px;
+    font-family: var(--font-num);
     font-size: 20px;
   }
 </style>

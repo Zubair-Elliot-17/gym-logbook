@@ -57,8 +57,9 @@
     grid-template-columns: 1fr var(--tap) 96px var(--tap);
     align-items: center;
     gap: var(--s2);
-    border: 1px solid var(--line);
+    border: 1px solid var(--rule);
     border-radius: var(--radius);
+    background: var(--paper);
     padding: var(--s2) var(--s3);
   }
   label {
@@ -67,6 +68,7 @@
   .btn {
     width: var(--tap);
     padding: 0;
+    font-family: var(--font-num);
     font-size: 20px;
   }
   input {

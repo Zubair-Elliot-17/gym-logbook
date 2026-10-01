@@ -1,36 +1,41 @@
-/* Design tokens: see DESIGN.md (design review 7A–10A). */
+/* Design tokens: "Field Book". Source of truth is DESIGN.md. */
 
 @font-face {
-  font-family: 'Instrument Sans';
-  font-weight: 400;
+  font-family: 'Bricolage Grotesque';
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
   font-display: swap;
-  src: url('/fonts/instrument-sans-latin-400-normal.woff2') format('woff2');
+  src: url('/fonts/bricolage-grotesque-latin-var.woff2') format('woff2-variations');
 }
 @font-face {
-  font-family: 'Instrument Sans';
-  font-weight: 600;
+  font-family: 'Atkinson Hyperlegible Next';
+  font-weight: 200 800;
   font-display: swap;
-  src: url('/fonts/instrument-sans-latin-600-normal.woff2') format('woff2');
+  src: url('/fonts/atkinson-hyperlegible-next-latin-var.woff2') format('woff2-variations');
 }
 @font-face {
-  font-family: 'Barlow Condensed';
-  font-weight: 600;
+  font-family: 'Martian Mono';
+  font-weight: 100 800;
+  font-stretch: 75% 112.5%;
   font-display: swap;
-  src: url('/fonts/barlow-condensed-latin-600-normal.woff2') format('woff2');
+  src: url('/fonts/martian-mono-latin-var.woff2') format('woff2-variations');
 }
 
 :root {
   color-scheme: light dark;
 
-  --paper: #f4f5f2;
-  --ink: #15171a;
-  --muted: #5c6166;
-  --line: #c9cccf;
-  --next: #e6e8ea;
-  --accent: #c8102e; /* PR badges and destructive confirms only */
+  /* Field book (light) */
+  --paper: #eee29a; /* page background */
+  --sheet: #f7efbe; /* sheets, next set, toasts: one step above the paper */
+  --ink: #1e1f1a; /* text, logged sets, done tiles */
+  --pencil: #5e5838; /* muted text, ghost outlines */
+  --rule: #d3c46e; /* ruled lines, borders */
+  --next: #e2d27a; /* long-press fill, skeletons */
+  --stamp: #b00e28; /* PR stamps and destructive confirms only */
 
-  --font-ui: 'Instrument Sans', system-ui, -apple-system, sans-serif;
-  --font-num: 'Barlow Condensed', system-ui, -apple-system, sans-serif;
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+  --font-num: 'Martian Mono', ui-monospace, monospace;
 
   --s1: 4px;
   --s2: 8px;
@@ -38,26 +43,33 @@
   --s4: 16px;
   --s5: 24px;
   --s6: 32px;
-  --radius: 10px;
+  --radius: 6px;
+  --radius-tile: 5px;
+  --radius-sheet: 18px;
 
   --tap: 48px;
   --set-h: 56px;
   --bar-h: 64px;
 
-  --fs-num: 22px;
-  --fs-day: 28px;
+  --fs-num: 19px;
+  --fs-day: 46px;
   --fs-body: 16px;
   --fs-caption: 13px;
-  --fs-badge: 12px;
+  --fs-label: 12px;
+  --fs-badge: 11px;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
+/* Night survey (dark): yellow ink on olive-graphite */
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #0f1113;
-    --ink: #ecedea;
-    --muted: #9aa0a6;
-    --line: #34383c;
-    --next: #22262a;
-    --accent: #ff4d5e;
+    --paper: #1b1c14;
+    --sheet: #26271c;
+    --ink: #ede3a0;
+    --pencil: #9c9670;
+    --rule: #34352a;
+    --next: #33352a;
+    --stamp: #ff6a4d;
   }
 }

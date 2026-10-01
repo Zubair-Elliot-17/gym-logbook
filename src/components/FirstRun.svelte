@@ -14,7 +14,7 @@
 </script>
 
 <main class="first-run">
-  <h1>Which day are you on?</h1>
+  <h1 class="display">Which day are you on?</h1>
   <p class="caption">Pick today. The app follows your cycle from here.</p>
   <ul role="radiogroup" aria-label="Cycle day">
     {#each days as d (d.id)}
@@ -42,7 +42,6 @@
   }
   h1 {
     font-size: var(--fs-day);
-    font-weight: 600;
   }
   ul {
     list-style: none;
@@ -56,10 +55,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--rule);
   }
   .chosen {
-    font-weight: 600;
+    font-weight: 700;
   }
   .bar {
     position: sticky;
@@ -70,5 +69,6 @@
   .bar .btn {
     width: 100%;
     min-height: 52px;
+    width: 100%;
   }
 </style>

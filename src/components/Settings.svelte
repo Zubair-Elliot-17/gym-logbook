@@ -123,7 +123,7 @@
 
 <header class="head">
   <button type="button" class="link back" onclick={onclose}>‹ Today</button>
-  <h1>Settings</h1>
+  <h1 class="display">Settings</h1>
 </header>
 
 <div class="notices">
@@ -214,7 +214,7 @@
   }
   h1 {
     font-size: var(--fs-day);
-    font-weight: 600;
+    margin-top: var(--s2);
   }
   .notices {
     display: grid;
@@ -222,16 +222,16 @@
     margin-bottom: var(--s4);
   }
   .notice {
-    border: 1px dashed var(--line);
+    border: 1.5px dotted var(--pencil);
     border-radius: var(--radius);
     padding: var(--s3);
     font-size: var(--fs-caption);
   }
   .notice.ok {
-    border-style: solid;
+    border: 1.5px solid var(--ink);
   }
   .notice.warn {
-    border: 1px dashed var(--ink);
+    border: 1.5px dashed var(--ink);
   }
   .notice a,
   .inline {
@@ -252,15 +252,15 @@
     justify-content: space-between;
     align-items: center;
     gap: var(--s3);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--rule);
     text-align: left;
   }
   .row:disabled {
-    color: var(--muted);
+    color: var(--pencil);
     cursor: default;
   }
   .row.strong {
-    font-weight: 600;
+    font-weight: 700;
   }
   .steps {
     margin: 0;

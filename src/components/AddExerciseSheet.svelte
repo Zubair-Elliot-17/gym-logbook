@@ -65,7 +65,7 @@
 <style>
   .search {
     min-height: var(--tap);
-    border: 1px solid var(--line);
+    border: 1px solid var(--rule);
     border-radius: var(--radius);
     padding: 0 var(--s3);
     font: inherit;
@@ -83,7 +83,7 @@
     width: 100%;
     min-height: var(--tap);
     text-align: left;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--rule);
   }
   .create {
     font-weight: 600;
