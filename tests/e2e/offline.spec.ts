@@ -1,0 +1,33 @@
+import { expect, test } from '@playwright/test'
+
+test('after one online load the app works offline: reload, fonts, logging', async ({ page, context }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Start with Upper →' }).click()
+  await expect(page.getByRole('heading', { name: 'Upper', level: 1 })).toBeVisible()
+
+  // Wait for the service worker to finish precaching and take control.
+  await page.evaluate(() => navigator.serviceWorker.ready)
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+
+  await context.setOffline(true)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Upper', level: 1 })).toBeVisible()
+
+  // Self-hosted fonts come from the precache, not the network.
+  await page.evaluate(() => document.fonts.ready)
+  expect(await page.evaluate(() => document.fonts.check('600 22px "Barlow Condensed"'))).toBe(true)
+
+  // Logging works with no network at all.
+  await page.getByRole('button', { name: /^Bench press, set 1,/ }).click()
+  await page.getByRole('dialog').getByLabel('Weight (kg)', { exact: true }).fill('40')
+  await page.getByRole('dialog').getByRole('button', { name: 'Log set' }).click()
+  await expect(page.getByRole('button', { name: /^Bench press, set 1, 40 kilos by 8, logged/ })).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByRole('button', { name: /^Bench press, set 1, 40 kilos by 8, logged/ })).toBeVisible()
+
+  // Settings reports it.
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(page.getByText('✓ Ready offline')).toBeVisible()
+})

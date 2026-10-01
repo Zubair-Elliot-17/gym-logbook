@@ -10,7 +10,7 @@
   import WeekStrip from './components/WeekStrip.svelte'
   import { backupOverdue } from './lib/backup'
   import { db, openDb } from './lib/db'
-  import { isStandalone, needRefresh, offlineReady, updateApp } from './lib/pwa'
+  import { isStandalone, needRefresh, offlineReady, requestPersistentStorage, updateApp } from './lib/pwa'
   import { loadToday, pickBanner, type TodayData } from './lib/today'
   import { toasts } from './lib/toast.svelte'
 
@@ -30,6 +30,7 @@
       status = 'error'
       return
     }
+    void requestPersistentStorage()
     sub = liveQuery(() => loadToday(db)).subscribe({
       next: (v) => {
         data = v

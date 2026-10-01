@@ -21,3 +21,17 @@ export function isStandalone(): boolean {
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   )
 }
+
+/**
+ * Ask the browser to keep our IndexedDB data under storage pressure. Best effort only: iOS may
+ * ignore it. The real defenses are the home-screen install and regular exports.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.persist) return false
+    if (await navigator.storage.persisted()) return true
+    return await navigator.storage.persist()
+  } catch {
+    return false
+  }
+}
