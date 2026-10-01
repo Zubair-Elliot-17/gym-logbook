@@ -149,7 +149,8 @@ const DEFAULT_REPS = 8
 /**
  * One row's ghost buttons. Count = max(plannedSets, last time's count) + extra "+ set"s, never fewer
  * than what's logged today. Values come from last time by position, else last time's final set, else
- * the seed. Extra sets copy the row's previous entry. An empty result (off-plan, no history) means
+ * the seed. Extra sets copy the row's previous entry, and so does a ghost whose weight is unknown.
+ * An empty result (off-plan, no history) means
  * the UI opens the editor.
  */
 export function ghostsFor(args: {
@@ -176,6 +177,11 @@ export function ghostsFor(args: {
       value = prev
         ? { weightKg: prev.logged?.weightKg ?? prev.weightKg, reps: prev.logged?.reps ?? prev.reps }
         : (seed ?? { weightKg: null, reps: DEFAULT_REPS })
+    }
+    // Unknown weight (first session, null seed): copy the previous set in the row once it has one.
+    const prevGhost = ghosts[i - 1]
+    if (value.weightKg === null && prevGhost) {
+      value = { ...value, weightKg: prevGhost.logged?.weightKg ?? prevGhost.weightKg }
     }
     const loggedSet = logged[i] ?? null
     const isNext = !loggedSet && !foundNext

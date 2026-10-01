@@ -170,6 +170,12 @@ describe('ghostsFor', () => {
     expect(g.every((x) => x.weightKg === null && x.reps === 10)).toBe(true)
   })
 
+  it('fills an unknown weight from the previous set once one is logged', () => {
+    const today = s(60, 8)
+    const g = ghostsFor({ plan: plan({ plannedSets: 3, seedWeightKg: null }), last: [], logged: [today] })
+    expect(g.map((x) => x.weightKg)).toEqual([60, 60, 60])
+  })
+
   it('returns no ghosts for an off-plan exercise with no history (UI opens the editor)', () => {
     expect(ghostsFor({ last: [], logged: [] })).toEqual([])
   })

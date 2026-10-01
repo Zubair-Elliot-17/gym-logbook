@@ -1,89 +1,107 @@
-<script>
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from './assets/vite.svg'
-  import heroImg from './assets/hero.png'
-  import Counter from './lib/Counter.svelte'
+<script lang="ts">
+  // App shell: open the database, then render Today from one liveQuery.
+  // States (3A): loading skeleton, DB-open error screen, first-run day picker, Today.
+  import { liveQuery } from 'dexie'
+  import { onMount } from 'svelte'
+  import DayView from './components/DayView.svelte'
+  import FirstRun from './components/FirstRun.svelte'
+  import Toasts from './components/Toasts.svelte'
+  import WeekStrip from './components/WeekStrip.svelte'
+  import { db, openDb } from './lib/db'
+  import { loadToday, type TodayData } from './lib/today'
+
+  let status = $state<'loading' | 'error' | 'ready'>('loading')
+  let data = $state.raw<TodayData | null>(null)
+  let sub: { unsubscribe(): void } | undefined
+
+  async function start() {
+    status = 'loading'
+    sub?.unsubscribe()
+    try {
+      await openDb(db)
+    } catch (e) {
+      console.error(e)
+      status = 'error'
+      return
+    }
+    sub = liveQuery(() => loadToday(db)).subscribe({
+      next: (v) => {
+        data = v
+        status = 'ready'
+      },
+      error: (e) => {
+        console.error(e)
+        status = 'error'
+      },
+    })
+  }
+
+  onMount(() => {
+    void start()
+    return () => sub?.unsubscribe()
+  })
+
+  const hasEntries = $derived(
+    data !== null &&
+      (data.activities.length > 0 ||
+        data.sets.some((s) => s.cycleNumber === data!.pos.cycleNumber && s.cycleDayId === data!.pos.cycleDayId)),
+  )
 </script>
 
-<section id="center">
-  <div class="hero">
-    <img src={heroImg} class="base" width="170" height="179" alt="" />
-    <img src={svelteLogo} class="framework" alt="Svelte logo" />
-    <img src={viteLogo} class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/App.svelte</code> and save to test <code>HMR</code></p>
-  </div>
-  <Counter />
-</section>
+{#if status === 'error'}
+  <main class="col error" role="alert">
+    <h1>Couldn’t open your log.</h1>
+    <p>Your data is still on this phone. Close the app fully and open it again, or tap Retry.</p>
+    <button type="button" class="btn primary" onclick={start}>Retry</button>
+  </main>
+{:else if status === 'loading' || !data}
+  <main class="col" aria-busy="true" aria-label="Loading">
+    <div class="skel strip"></div>
+    <div class="skel title"></div>
+    <div class="skel row"></div>
+    <div class="skel row"></div>
+  </main>
+{:else if !data.state.startPicked}
+  <div class="col"><FirstRun {db} {data} /></div>
+{:else}
+  <main class="col">
+    <WeekStrip {db} {data} {hasEntries} />
+    <DayView {db} {data} />
+  </main>
+{/if}
 
-<div class="ticks"></div>
+<Toasts />
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true">
-      <use href="/icons.svg#documentation-icon"></use>
-    </svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank" rel="noreferrer">
-          <img class="logo" src={viteLogo} alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://svelte.dev/" target="_blank" rel="noreferrer">
-          <img class="button-icon" src={svelteLogo} alt="" />
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true">
-      <use href="/icons.svg#social-icon"></use>
-    </svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li>
-        <a href="https://github.com/vitejs/vite" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#github-icon"></use>
-          </svg>
-          GitHub
-        </a>
-      </li>
-      <li>
-        <a href="https://chat.vite.dev/" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#discord-icon"></use>
-          </svg>
-          Discord
-        </a>
-      </li>
-      <li>
-        <a href="https://x.com/vite_js" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#x-icon"></use>
-          </svg>
-          X.com
-        </a>
-      </li>
-      <li>
-        <a href="https://bsky.app/profile/vite.dev" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#bluesky-icon"></use>
-          </svg>
-          Bluesky
-        </a>
-      </li>
-    </ul>
-  </div>
-</section>
-
-<div class="ticks"></div>
-<section id="spacer"></section>
+<style>
+  .col {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: calc(var(--s3) + env(safe-area-inset-top)) var(--s4) 0;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+  .error {
+    display: grid;
+    align-content: center;
+    gap: var(--s4);
+  }
+  .error h1 {
+    font-size: var(--fs-day);
+  }
+  .skel {
+    background: var(--next);
+    border-radius: var(--radius);
+    margin-bottom: var(--s4);
+  }
+  .skel.strip {
+    height: var(--tap);
+  }
+  .skel.title {
+    height: 34px;
+    width: 50%;
+  }
+  .skel.row {
+    height: 110px;
+  }
+</style>
