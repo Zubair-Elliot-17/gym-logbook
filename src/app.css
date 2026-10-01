@@ -14,9 +14,9 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-ui);
+  font-family: var(--font-body);
   font-size: var(--fs-body);
-  line-height: 1.4;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -27,11 +27,11 @@ body {
 }
 
 input {
-  caret-color: var(--accent);
+  caret-color: var(--stamp);
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--stamp);
   outline-offset: 2px;
 }
 
@@ -55,12 +55,34 @@ p {
 .num {
   font-family: var(--font-num);
   font-weight: 600;
+  font-stretch: 75%;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+}
+
+/* Stamped caps: day names, sheet titles, Finish */
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: 75%;
+  text-transform: uppercase;
+  line-height: 0.92;
+}
+
+/* Typed meta labels: "DAY 5 OF 6 · CYCLE #3" */
+.label {
+  font-family: var(--font-num);
+  font-weight: 600;
+  font-stretch: 87.5%;
+  font-size: var(--fs-label);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pencil);
 }
 
 .caption {
   font-size: var(--fs-caption);
-  color: var(--muted);
+  color: var(--pencil);
 }
 
 .link {
@@ -70,6 +92,7 @@ p {
   font-size: var(--fs-caption);
   color: var(--ink);
   text-decoration: underline;
+  text-decoration-color: var(--pencil);
   text-underline-offset: 3px;
 }
 
@@ -77,23 +100,34 @@ p {
   min-height: var(--tap);
   padding: 0 var(--s4);
   border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--paper);
-  font-weight: 600;
+  border: 1.5px solid var(--ink);
+  background: transparent;
+  font-weight: 700;
 }
 
-.btn.primary {
+/* Primary actions read as a stamp: display caps, 2px ink */
+.btn.primary,
+.btn.solid {
   border: 2px solid var(--ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: 75%;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .btn.solid {
   background: var(--ink);
   color: var(--paper);
-  border: 2px solid var(--ink);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .btn.danger {
-  color: var(--accent);
+  color: var(--stamp);
 }
 
 .btn:disabled {

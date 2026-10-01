@@ -60,7 +60,7 @@
     grid-template-columns: auto 1fr;
     align-items: center;
     gap: var(--s3);
-    border: 1px solid var(--line);
+    border: 1px solid var(--rule);
     border-radius: var(--radius);
     padding: var(--s2) var(--s3);
   }

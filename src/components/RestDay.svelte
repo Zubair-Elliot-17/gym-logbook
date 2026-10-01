@@ -50,7 +50,7 @@
   }
 </script>
 
-<p class="caption prompt">What did you do?</p>
+<p class="label prompt">What did you do?</p>
 <div class="chips">
   {#each logged as a (a.id)}
     <button
@@ -96,22 +96,37 @@
   }
   .chip {
     min-height: 64px;
-    border: 1px dashed var(--line);
+    border: 1.5px dotted var(--pencil);
     border-radius: var(--radius);
-    color: var(--muted);
+    color: var(--pencil);
     font-size: 17px;
+    white-space: nowrap;
   }
   .chip .num {
     font-size: var(--fs-num);
   }
   .chip.logged {
     background: var(--ink);
-    border: 2px solid var(--ink);
+    border: 0;
     color: var(--paper);
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow:
+      inset 0 0 0 3px var(--ink),
+      inset 0 0 0 4px var(--paper);
+    animation: stamp 120ms var(--ease-out);
+  }
+  @keyframes stamp {
+    from {
+      transform: scale(0.94);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chip.logged {
+      animation: none;
+    }
   }
   .chip.wide {
     grid-column: 1 / -1;
-    border-style: dotted;
+    border-style: dashed;
   }
 </style>

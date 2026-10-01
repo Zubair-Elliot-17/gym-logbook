@@ -1,58 +1,166 @@
-# Design system
+---
+# gstack: design-md-format=spec
+name: Gym Logbook
+description: A yellow waterproof field book for lifting, written in graphite and stamped when it's done, built for wet hands and bad light.
+colors:
+  paper: "#EEE29A"
+  sheet: "#F7EFBE"
+  ink: "#1E1F1A"
+  pencil: "#5E5838"
+  rule: "#D3C46E"
+  next: "#E2D27A"
+  stamp: "#B00E28"
+  paper-dark: "#1B1C14"
+  sheet-dark: "#26271C"
+  ink-dark: "#EDE3A0"
+  pencil-dark: "#9C9670"
+  rule-dark: "#34352A"
+  next-dark: "#33352A"
+  stamp-dark: "#FF6A4D"
+typography:
+  display:
+    fontFamily: Bricolage Grotesque
+    fontWeight: 800
+    fontSize: 2.875rem
+    fontStretch: 75%
+    textTransform: uppercase
+    lineHeight: 0.92
+  body:
+    fontFamily: Atkinson Hyperlegible Next
+    fontWeight: 400
+    fontSize: 1rem
+    lineHeight: 1.45
+  label:
+    fontFamily: Martian Mono
+    fontWeight: 600
+    fontSize: 0.75rem
+    fontStretch: 87.5%
+    letterSpacing: 0.04em
+    textTransform: uppercase
+  mono:
+    fontFamily: Martian Mono
+    fontWeight: 600
+    fontSize: 1.1875rem
+    fontStretch: 75%
+    letterSpacing: -0.02em
+    fontFeature: tnum
+rounded:
+  sm: 5px
+  md: 6px
+  lg: 18px
+  phone: 30px
+spacing:
+  xs: 4px
+  sm: 8px
+  md: 12px
+  lg: 16px
+  xl: 24px
+  2xl: 32px
+components:
+  set-ghost:
+    borderColor: "{colors.pencil}"
+    borderStyle: dotted 1.5px
+    textColor: "{colors.pencil}"
+    minHeight: 56px
+    rounded: "{rounded.md}"
+  set-next:
+    backgroundColor: "{colors.sheet}"
+    borderColor: "{colors.ink}"
+    borderStyle: solid 2px
+    textColor: "{colors.ink}"
+  set-logged:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.paper}"
+    stamp: "inset 0 0 0 3px ink, inset 0 0 0 4px paper"
+  pr-stamp:
+    textColor: "{colors.stamp}"
+    borderColor: "{colors.stamp}"
+    fontFamily: Bricolage Grotesque
+    rotate: -6deg
+  button-primary:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.md}"
+  sheet:
+    backgroundColor: "{colors.sheet}"
+    rounded: "{rounded.lg}"
+---
 
-Source of truth for the UI. Decided in `/plan-design-review` (2026-10-01), decisions 7A–15A.
-Tokens live in `src/styles/tokens.css`.
+# Gym Logbook
 
-## Type (7A)
-- UI text: **Instrument Sans** 400 / 600.
-- Every weight, rep and count: **Barlow Condensed** 600, `font-variant-numeric: tabular-nums` (class `.num`).
-- Both self-hosted in `public/fonts/` (latin woff2, SIL Open Font License) and precached by the
-  service worker. Fallback `system-ui`.
+## Overview
 
-## Color (8A)
-Switched with `prefers-color-scheme`.
+**Creative North Star:** "Field Book": the app is a yellow waterproof surveyor's notebook. It's personal because you wear it in, not because it's decorated.
+**Product context:** offline phone logbook (PWA) for weight training, one lifter now, any lifter later. Peers: Hevy, Strong (Inter, white or navy, one blue accent).
+**Mode per surface:** Operate everywhere (Today, rest day, editor sheet, Settings, first run).
+**Reference sites:** https://www.hevyapp.com, https://www.strong.app (2026-10-01; fitbod.me was behind a bot check).
+**Key characteristics:**
+- Field-book yellow owns the page in light mode. Dark mode is "night survey": yellow ink on olive-graphite.
+- Numbers look typed (Martian Mono). Day names look stamped (Bricolage, condensed caps).
+- Logging leaves marks: dotted pencil outline → ruled-in next set → inked stamp. A PR gets a red benchmark stamp.
+- The same big targets and one-column flow as v1. Only the material changes.
 
-| Token | Light | Dark | Use |
-|---|---|---|---|
-| `--paper` | #F4F5F2 | #0F1113 | background |
-| `--ink` | #15171A | #ECEDEA | text, logged sets, done tiles |
-| `--muted` | #5C6166 | #9AA0A6 | secondary text, ghosts |
-| `--line` | #C9CCCF | #34383C | borders, dashed ghosts |
-| `--next` | #E6E8EA | #22262A | the next ghost, long-press fill |
-| `--accent` | #C8102E | #FF4D5E | **PR badges and destructive confirms only** |
+## Colors
 
-Measured contrast: muted 5.72 / 7.17, PR badge text 5.88 / 5.83, ink on next 14.6 / 13.0.
+**Strategy:** Committed. Yellow paper is the brand. Graphite ink carries text and logged state. Stamp red is the only accent, and only for PRs and destructive confirms.
+**Light or dark:** follows the phone (`prefers-color-scheme`). Gyms swing between bright fluorescent and dim, so both themes are first class. Dark is not an inversion: the sheet sits one step above the paper, and ink turns yellow so the field-book identity survives at night.
+Contrast (WCAG): ink/paper 12.6 (light), 13.2 (dark). Pencil/paper 5.5, 5.7. Stamp/paper 5.4, 6.1. Logged text on ink 14.3, 13.2.
 
-## States (9A, 15A)
-| Element | Style |
-|---|---|
-| Ghost set | 1px dashed `--line`, `--muted` text |
-| Next set | `--next` fill, 2px `--ink` border |
-| Logged set | `--ink` fill, `--paper` text, ✓ |
-| PR | `--accent` badge, ≥ 12px text |
-| Tile done | `--ink` fill |
-| Tile skipped | hatched `--line` on `--paper` |
-| Tile today | 2px `--ink` border, bold |
-| Tile upcoming | 1px `--line` |
-| Tile passed | 1px dotted `--line`, `--muted` text |
+## Typography
 
-No two states share a style.
+- **Display: Bricolage Grotesque 800, width 75%, uppercase.** Used for day names, sheet titles, Finish and the summary card. It reads like a rubber stamp. Never use it for body text.
+- **Body/UI: Atkinson Hyperlegible Next 400/700.** The Braille Institute designed it for low-vision legibility, which suits 2-second glances in a dim gym. Use it for exercise names, chips, settings and sentences.
+- **Numerals and labels: Martian Mono 600.** Width 75% for set buttons (19px), 87.5% for meta labels (12px, uppercase). Fixed width, so columns line up and digits never jitter.
+- All three are Google Fonts under the OFL, self-hosted as latin woff2 in `public/fonts/` and precached by the service worker so they work offline. Fallbacks: `system-ui` for display and body, `ui-monospace` for numerals.
 
-## Sizes (10A)
-- Spacing 4 / 8 / 12 / 16 / 24 / 32. Radius 10px.
-- Tap targets ≥ 48×48. Set buttons ≥ 56px tall.
-- Numerals 22px. Day name 28px / 600. Body 16px. Captions 13px. PR badge 12px.
-- Sticky Finish bar 64px + safe-area inset.
-- Wider than 520px: one centered column, max-width 480px (13A).
+## Layout
+
+One column, max-width 480px, centered on wider screens. 16px side gutter. Rows are separated by 1px `rule` lines, like ruled pages. The sticky Finish bar is 64px plus the safe-area inset.
+
+## Elevation & Depth
+
+Flat paper. Depth comes from the sheet colour stepping above the paper, plus a 2px ink border on sheets and the next set. No shadows and no glow. The dimmed backdrop behind sheets is ink at 38%.
+
+## Shapes
+
+Corners are 6px on sets, chips and buttons (a stamped block, not a bubble), 5px on week tiles and 18px on the top of sheets. The PR stamp uses 3px corners and is rotated −6°.
+
+## Components
+
+- **Set:** ghost = 1.5px dotted pencil. Next = sheet fill with a 2px ink border. Logged = ink fill, paper text and a double-ring "stamp" inset. PR = a red stamp label overlapping the top-right corner. No two states share a style.
+- **Week tile:** done = ink fill. Skipped = hatched rule. Today = 2px ink border. Passed = dotted pencil. Upcoming = 1px rule.
+- **Chip (rest day):** dotted until logged, then the same stamp as a logged set.
+- **Buttons:** primary = ink fill with paper text, in display caps. Secondary = 2px ink outline. Disabled = 40% opacity.
+- **Toasts:** sheet colour with a 2px ink border. Save-failed toasts use a dashed border.
+- **Focus-visible:** 2px stamp outline, offset 2px.
+
+## Do's and Don'ts
+
+- Do keep stamp red for PRs and destructive actions only.
+- Do set every weight, rep and count in Martian Mono.
+- Do keep tap targets ≥ 48px and set buttons ≥ 56px.
+- Don't add textures, grain, doodles or handwriting fonts. The field book is clean paper.
+- Don't add drop shadows, glows or gradients.
+- Don't use blue. That's the category's colour, not ours.
 
 ## Motion
-Only three authored moments, all replaced by static changes under `prefers-reduced-motion`:
-1. Next unfinished row scrolls to the top (2A).
-2. Finish summary card (6A).
-3. Long-press fill, 450 ms left-to-right (11A); static highlight at 200 ms with reduced motion.
 
-## Accessibility (13A)
-- Set label: "<exercise>, set N, W kilos by R, <ghost|next|logged|PR>, <action>".
-- Toasts `role=status`; the save-failed toast `role=alert`.
-- Sheets `role=dialog`; focus moves to the title on open and returns on close.
-- Tiles: "<day>, <done|skipped|today|upcoming|passed>".
+- **Approach:** intentional.
+- **Easing:** enter ease-out, exit ease-in.
+- **Duration:** micro 120ms, short 200ms.
+- **The one authored moment:** logging a set stamps it with a 120ms press (scale 0.96 → 1) as it fills with ink. Under reduced motion the fill is instant. The long-press fill (450ms) and the Finish card stay as before.
+
+## Accessibility
+
+Carried over from v1:
+- **Set labels:** "<exercise>, set N, W kilos by R, <ghost|next|logged|PR>, <action>".
+- **Toasts:** role=status, and role=alert for save failures.
+- **Sheets:** role=dialog, with focus moved to the title on open.
+- **Reduced motion:** honored everywhere.
+
+## Decisions Log
+
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-10-01 | v1 "ink on paper" system (Instrument Sans + Barlow Condensed, red PR accent) | Ship v1 fast (/plan-design-review) |
+| 2026-10-01 | Replaced with "Field Book" | /design-consultation: user's memorable thing is "Mine, personal". Research showed Hevy and Strong share Inter + white/navy + blue. A Claude subagent independently proposed the field-book direction; adopted its yellow paper, fonts and stamps. Codex unavailable. |

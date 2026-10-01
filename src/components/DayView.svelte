@@ -208,8 +208,8 @@
       /></svg
     >
   </button>
-  <h1>{data.day.name}</h1>
-  <p class="caption">{dayHeading(data)}</p>
+  <h1 class="display">{data.day.name}</h1>
+  <p class="label meta">{dayHeading(data)}</p>
 </header>
 
 {#if isLift}
@@ -288,20 +288,23 @@
     height: var(--tap);
     display: grid;
     place-items: center;
-    color: var(--muted);
+    color: var(--pencil);
+  }
+  .meta {
+    margin-top: var(--s2);
   }
   h1 {
     font-size: var(--fs-day);
-    font-weight: 600;
+    padding-right: var(--tap);
     line-height: 1.15;
   }
   .empty {
     padding: var(--s4) 0;
-    color: var(--muted);
-    border-top: 1px dashed var(--line);
+    color: var(--pencil);
+    border-top: 1px solid var(--rule);
   }
   .add {
-    border-top: 1px dashed var(--line);
+    border-top: 1px solid var(--rule);
     padding: var(--s2) 0 var(--s6);
   }
   .grow {
@@ -314,11 +317,11 @@
     padding: var(--s2) var(--s4) calc(var(--s2) + env(safe-area-inset-bottom));
     min-height: var(--bar-h);
     background: var(--paper);
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--rule);
   }
   .finish {
     width: 100%;
     min-height: 48px;
-    font-size: 17px;
+    min-height: 52px;
   }
 </style>

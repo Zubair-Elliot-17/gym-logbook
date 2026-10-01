@@ -1,7 +1,7 @@
 # Gym Logbook
 
 Cycle-first offline PWA (Vite + Svelte 5 + Dexie). Design doc and task lists live in gstack:
-`~/.gstack/projects/scratch-2026-10-01-41ae97/`. UI rules: `DESIGN.md`.
+`~/.gstack/projects/scratch-2026-10-01-41ae97/`. UI rules: `DESIGN.md` ("Field Book").
 
 Workflow: one branch + PR per task off `main`; the owner reviews and merges every PR.
 
@@ -23,3 +23,9 @@ Key routing rules:
 - Save progress → invoke /context-save
 - Resume context → invoke /context-restore
 - Author a backlog-ready spec/issue → invoke /spec
+
+## Design System
+Always read DESIGN.md before making any visual or UI decisions.
+All font choices, colors, spacing, and aesthetic direction are defined there.
+Do not deviate without explicit user approval.
+In QA mode, flag any code that doesn't match DESIGN.md.

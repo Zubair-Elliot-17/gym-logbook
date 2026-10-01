@@ -83,9 +83,15 @@
   .tile {
     width: 100%;
     min-height: var(--tap);
-    border-radius: 8px;
-    font-size: var(--fs-caption);
-    border: 1px solid var(--line);
+    border-radius: var(--radius-tile);
+    border: 1px solid var(--rule);
+    background: var(--sheet);
+    font-family: var(--font-num);
+    font-weight: 600;
+    font-stretch: 75%;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
     padding: 0 2px;
     overflow: hidden;
     white-space: nowrap;
@@ -97,22 +103,24 @@
     color: var(--paper);
   }
   .tile.skipped {
-    background: repeating-linear-gradient(-45deg, var(--line) 0 2px, var(--paper) 2px 7px);
-    border-color: var(--line);
+    background: repeating-linear-gradient(-45deg, var(--rule) 0 2px, var(--sheet) 2px 7px);
+    border-color: var(--rule);
   }
   .tile.current {
     border: 2px solid var(--ink);
-    font-weight: 600;
+    font-weight: 800;
   }
   .tile.passed {
-    border: 1px dotted var(--line);
-    color: var(--muted);
+    background: transparent;
+    border: 1.5px dotted var(--pencil);
+    color: var(--pencil);
   }
   .note {
     margin-top: var(--s3);
     padding: var(--s3);
-    border: 1px dashed var(--line);
+    border: 1.5px dotted var(--pencil);
     border-radius: var(--radius);
+    background: var(--sheet);
     display: grid;
     gap: var(--s2);
   }

@@ -13,7 +13,7 @@
 
 <div class="overlay" role="status">
   <button type="button" class="card" onclick={ondone} aria-label="{summary.title}. Tap to continue.">
-    <span class="title">{summary.title}</span>
+    <span class="title display">{summary.title}</span>
     {#each summary.lines as line (line)}
       <span class="line num">{line}</span>
     {/each}
@@ -40,16 +40,15 @@
     padding: var(--s5);
     border: 2px solid var(--ink);
     border-radius: var(--radius);
-    background: var(--paper);
+    background: var(--sheet);
     text-align: left;
   }
   .title {
-    font-size: 20px;
-    font-weight: 600;
+    font-size: 28px;
   }
   .line {
     font-size: var(--fs-num);
-    color: var(--accent);
+    color: var(--stamp);
   }
   .undo {
     justify-self: center;

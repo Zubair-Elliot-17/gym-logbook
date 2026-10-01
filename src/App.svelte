@@ -75,7 +75,7 @@
 
 {#if status === 'error'}
   <main class="col error" role="alert">
-    <h1>Couldn’t open your log.</h1>
+    <h1 class="display">Couldn’t open your log.</h1>
     <p>Your data is still on this phone. Close the app fully and open it again, or tap Retry.</p>
     <button type="button" class="btn primary" onclick={start}>Retry</button>
   </main>
@@ -149,7 +149,8 @@
     gap: var(--s3);
     margin-bottom: var(--s3);
     padding: var(--s2) var(--s3);
-    border: 1px dashed var(--ink);
+    border: 1.5px dashed var(--ink);
+    background: var(--sheet);
     border-radius: var(--radius);
     font-size: var(--fs-caption);
   }
@@ -158,7 +159,7 @@
   }
   .banner-link {
     min-height: var(--tap);
-    font-weight: 600;
+    font-weight: 700;
     text-decoration: underline;
     text-underline-offset: 3px;
   }

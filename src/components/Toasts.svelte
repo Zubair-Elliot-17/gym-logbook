@@ -45,7 +45,7 @@
     gap: var(--s3);
     min-height: var(--tap);
     padding: 0 var(--s2) 0 var(--s4);
-    background: var(--paper);
+    background: var(--sheet);
     border: 2px solid var(--ink);
     border-radius: var(--radius);
   }
@@ -56,7 +56,7 @@
     flex: 1;
   }
   .action {
-    font-weight: 600;
+    font-weight: 700;
     min-height: var(--tap);
     padding: 0 var(--s3);
   }

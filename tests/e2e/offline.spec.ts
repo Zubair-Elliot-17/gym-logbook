@@ -16,7 +16,8 @@ test('after one online load the app works offline: reload, fonts, logging', asyn
 
   // Self-hosted fonts come from the precache, not the network.
   await page.evaluate(() => document.fonts.ready)
-  expect(await page.evaluate(() => document.fonts.check('600 22px "Barlow Condensed"'))).toBe(true)
+  const loaded = await page.evaluate(() => [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family))
+  expect(loaded).toEqual(expect.arrayContaining(['Bricolage Grotesque', 'Atkinson Hyperlegible Next', 'Martian Mono']))
 
   // Logging works with no network at all.
   await page.getByRole('button', { name: /^Bench press, set 1,/ }).click()
