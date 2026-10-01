@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { onboard } from './onboard'
 
 test('rest day: chip logs in one tap, finish fills the tile, Go back a day undoes it', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('radio', { name: /Active rest/ }).click()
-  await page.getByRole('button', { name: 'Start with Active rest →' }).click()
+  await onboard(page, { day: 'Active rest', exercises: {} })
 
   await page.getByRole('button', { name: 'Log Walk, 30 minutes' }).click()
   await expect(page.getByRole('button', { name: 'Walk, 30 minutes, logged, tap to edit' })).toBeVisible()
@@ -21,8 +20,7 @@ test('rest day: chip logs in one tap, finish fills the tile, Go back a day undoe
 })
 
 test('import rejects a foreign file and changes nothing', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Start with Upper →' }).click()
+  await onboard(page)
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.locator('input[type=file]').setInputFiles({
     name: 'notes.json',

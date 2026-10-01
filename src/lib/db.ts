@@ -3,11 +3,10 @@
 // change nothing, so the caller shows the retry toast.
 
 import Dexie, { type Table } from 'dexie'
+import { catalogByName, catalogEntry, type CatalogEntry } from './catalog'
 import {
   SEED_VERSION,
   cycleDays as seedDays,
-  dayExercises as seedPlan,
-  exercises as seedExercises,
   stepFor,
   type CycleDay,
   type DayExercise,
@@ -56,6 +55,8 @@ export interface AppState {
   seedVersion: number
   /** The first-run "Which day are you on?" prompt has been answered. */
   startPicked: boolean
+  /** The welcome + exercise setup has been shown (missing on installs from before it existed). */
+  welcomed?: boolean
   lastExportAt: string | null
   /** cycleNumber when the last export was recorded; the reminder fires 2 cycles later. */
   lastExportCycle: number | null
@@ -174,23 +175,24 @@ export async function openDb(d: LogbookDB = db): Promise<LogbookDB> {
 }
 
 /**
- * Make plan rows match seed.ts. Runs on first run (empty DB) and whenever SEED_VERSION is newer than
- * state.seedVersion (a plan change, or after importing an older backup: eng review E1). Never on
- * every load.
- * - Upserts seed cycleDays/exercises by id; dayExercise rows are replaced with the seed plan.
- * - A day dropped from the seed is archived if it has history, otherwise deleted.
- * - An exercise dropped from the seed is kept if it has sets, otherwise deleted.
- * - Ad-hoc `custom-` exercises are never touched.
- * - If the current day is no longer active, state moves to the first active day.
+ * Make the cycle days match seed.ts. Runs on first run (empty DB) and whenever SEED_VERSION is newer
+ * than state.seedVersion, never on every load. Exercises and day plans are the user's own data and are
+ * never written here, except the one-time v1→v2 cleanup below.
+ * - Upserts seed cycleDays by id. A day dropped from the seed is archived if it has history, otherwise
+ *   deleted. If the current day is no longer active, state moves to the first active day.
+ * - v1→v2: v1 shipped a pre-picked exercise list. Plan rows and exercises that were never logged are
+ *   removed, so every lifting day starts empty; anything with logged sets stays.
  */
 export interface Seed {
   version: number
   cycleDays: CycleDay[]
-  exercises: Exercise[]
-  dayExercises: DayExercise[]
 }
 
-export const SEED: Seed = { version: SEED_VERSION, cycleDays: seedDays, exercises: seedExercises, dayExercises: seedPlan }
+export const SEED: Seed = { version: SEED_VERSION, cycleDays: seedDays }
+
+async function setCount(d: LogbookDB, exerciseId: string): Promise<number> {
+  return d.sets.where('[exerciseId+loggedAt]').between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey]).count()
+}
 
 export async function syncSeed(d: LogbookDB, seed: Seed = SEED): Promise<void> {
   await d.transaction(
@@ -212,19 +214,20 @@ export async function syncSeed(d: LogbookDB, seed: Seed = SEED): Promise<void> {
       }
       await d.cycleDays.bulkPut(seed.cycleDays)
 
-      const seedExIds = new Set(seed.exercises.map((x) => x.id))
-      for (const ex of await d.exercises.toArray()) {
-        if (seedExIds.has(ex.id) || ex.id.startsWith('custom-')) continue
-        const used = await d.sets
-          .where('[exerciseId+loggedAt]')
-          .between([ex.id, Dexie.minKey], [ex.id, Dexie.maxKey])
-          .count()
-        if (used === 0) await d.exercises.delete(ex.id)
-      }
-      await d.exercises.bulkPut(seed.exercises)
+      // Plan rows for days that no longer exist go away (their history stays).
+      const activeIds = new Set(activeDays(await d.cycleDays.toArray()).map((x) => x.id))
+      await d.dayExercises.filter((p) => !activeIds.has(p.cycleDayId)).delete()
 
-      await d.dayExercises.clear()
-      await d.dayExercises.bulkPut(seed.dayExercises)
+      if (st && st.seedVersion < 2) {
+        for (const p of await d.dayExercises.toArray()) {
+          if ((await setCount(d, p.exerciseId)) === 0) await d.dayExercises.delete([p.cycleDayId, p.exerciseId])
+        }
+        const planned = new Set((await d.dayExercises.toArray()).map((p) => p.exerciseId))
+        for (const ex of await d.exercises.toArray()) {
+          if (ex.id.startsWith('custom-') || planned.has(ex.id)) continue
+          if ((await setCount(d, ex.id)) === 0) await d.exercises.delete(ex.id)
+        }
+      }
 
       const active = activeDays(await d.cycleDays.toArray())
       if (st) {
@@ -241,6 +244,7 @@ export async function syncSeed(d: LogbookDB, seed: Seed = SEED): Promise<void> {
           cycleNumber: 1,
           seedVersion: seed.version,
           startPicked: false,
+          welcomed: false,
           lastExportAt: null,
           lastExportCycle: null,
         })
@@ -321,10 +325,107 @@ export async function createExercise(d: LogbookDB, name: string, equipment: Equi
   return d.transaction('rw', d.exercises, async () => {
     const existing = await d.exercises.filter((e) => e.name.toLowerCase() === trimmed.toLowerCase()).first()
     if (existing) return existing
+    const known = catalogByName(trimmed)
+    if (known) return ensureCatalogExercise(d, known)
     const ex: Exercise = { id: `custom-${uuid()}`, name: trimmed, stepKg: stepFor(equipment) }
     await d.exercises.add(ex)
     return ex
   })
+}
+
+/** The exercise row for a library entry, created on first use. */
+export async function ensureCatalogExercise(d: LogbookDB, entry: CatalogEntry): Promise<Exercise> {
+  return d.transaction('rw', d.exercises, async () => {
+    const existing = await d.exercises.get(entry.id)
+    if (existing) return existing
+    const ex: Exercise = { id: entry.id, name: entry.name, stepKg: stepFor(entry.equipment) }
+    await d.exercises.add(ex)
+    return ex
+  })
+}
+
+// ---- Day plans (the user's own exercises per lifting day) ----
+
+export interface PlanValues {
+  plannedSets: number
+  /** null = no starting weight; the first set asks for it. */
+  seedWeightKg: number | null
+  seedReps: number
+}
+
+function checkPlan(v: PlanValues) {
+  if (!Number.isInteger(v.plannedSets) || v.plannedSets < 1 || v.plannedSets > 20) throw new RangeError('Sets must be 1 to 20')
+  if (v.seedWeightKg !== null && (!Number.isFinite(v.seedWeightKg) || v.seedWeightKg < 0))
+    throw new RangeError('Weight must be 0 kg or more')
+  if (!Number.isInteger(v.seedReps) || v.seedReps < 1) throw new RangeError('Reps must be a whole number of 1 or more')
+}
+
+/** The plan for one day, in order. */
+export async function dayPlan(d: LogbookDB, cycleDayId: string): Promise<DayExercise[]> {
+  return (await d.dayExercises.where('cycleDayId').equals(cycleDayId).toArray()).sort((a, b) => a.order - b.order)
+}
+
+/** Add an exercise to the end of a day's plan. Adding one that's already there does nothing. */
+export async function addToPlan(
+  d: LogbookDB,
+  cycleDayId: string,
+  exerciseId: string,
+  values?: Partial<PlanValues>,
+): Promise<DayExercise> {
+  return d.transaction('rw', [d.dayExercises, d.exercises], async () => {
+    const existing = await d.dayExercises.get([cycleDayId, exerciseId])
+    if (existing) return existing
+    if (!(await d.exercises.get(exerciseId))) throw new Error(`Unknown exercise ${exerciseId}`)
+    const plan = await dayPlan(d, cycleDayId)
+    const row: DayExercise = {
+      cycleDayId,
+      exerciseId,
+      order: (plan.at(-1)?.order ?? 0) + 1,
+      plannedSets: values?.plannedSets ?? 3,
+      seedWeightKg: values?.seedWeightKg ?? null,
+      seedReps: values?.seedReps ?? catalogEntry(exerciseId)?.reps ?? 10,
+    }
+    checkPlan(row)
+    await d.dayExercises.add(row)
+    return row
+  })
+}
+
+export async function updatePlanRow(d: LogbookDB, cycleDayId: string, exerciseId: string, values: PlanValues): Promise<void> {
+  checkPlan(values)
+  const n = await d.dayExercises.update([cycleDayId, exerciseId], values)
+  if (n === 0) throw new Error('Not in this day’s plan')
+}
+
+/** Remove from the plan. Logged history is untouched. Returns the row so it can be restored. */
+export async function removeFromPlan(d: LogbookDB, cycleDayId: string, exerciseId: string): Promise<DayExercise | undefined> {
+  return d.transaction('rw', d.dayExercises, async () => {
+    const row = await d.dayExercises.get([cycleDayId, exerciseId])
+    await d.dayExercises.delete([cycleDayId, exerciseId])
+    return row
+  })
+}
+
+export async function restorePlanRow(d: LogbookDB, row: DayExercise): Promise<void> {
+  await d.dayExercises.put(row)
+}
+
+/** Move an exercise one place up (-1) or down (+1) in its day. */
+export async function movePlanRow(d: LogbookDB, cycleDayId: string, exerciseId: string, dir: 1 | -1): Promise<void> {
+  await d.transaction('rw', d.dayExercises, async () => {
+    const plan = await dayPlan(d, cycleDayId)
+    const i = plan.findIndex((p) => p.exerciseId === exerciseId)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= plan.length) return
+    const reordered = [...plan]
+    ;[reordered[i], reordered[j]] = [reordered[j], reordered[i]]
+    await d.dayExercises.bulkPut(reordered.map((p, k) => ({ ...p, order: k + 1 })))
+  })
+}
+
+/** The welcome + setup flow is done. */
+export async function finishWelcome(d: LogbookDB): Promise<void> {
+  await d.state.update('app', { welcomed: true })
 }
 
 // ---- Draft ----

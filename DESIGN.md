@@ -131,6 +131,9 @@ Corners are 6px on sets, chips and buttons (a stamped block, not a bubble), 5px 
 - **Week tile:** done = ink fill. Skipped = hatched rule. Today = 2px ink border. Passed = dotted pencil. Upcoming = 1px rule.
 - **Chip (rest day):** dotted until logged, then the same stamp as a logged set.
 - **Buttons:** primary = ink fill with paper text, in display caps. Secondary = 2px ink outline. Disabled = 40% opacity.
+- **Welcome (first open only):** display "WELCOME" at 64px, three numbered how-it-works steps on ink squares, then "Your exercises" (one row per lifting day in display caps, with a "Set up ›" / "Edit ›" action), then the day picker.
+- **Exercise table:** a search field (1.5px ink), muscle tabs as typed labels (the selected tab is ink fill), and rows with the name over the equipment, plus a square "+" that becomes an ink "✓" once added. "+ Add '…' as your own exercise" is a dashed row.
+- **Your exercises (day editor):** rows of name + a typed summary ("3 × 5 · 140 kg"), with ↑ ↓ × tools at 48px tall, and a dashed "+ Add exercises" button.
 - **Toasts:** sheet colour with a 2px ink border. Save-failed toasts use a dashed border.
 - **Focus-visible:** 2px stamp outline, offset 2px.
 
@@ -164,3 +167,4 @@ Carried over from v1:
 |------|----------|-----------|
 | 2026-10-01 | v1 "ink on paper" system (Instrument Sans + Barlow Condensed, red PR accent) | Ship v1 fast (/plan-design-review) |
 | 2026-10-01 | Replaced with "Field Book" | /design-consultation: user's memorable thing is "Mine, personal". Research showed Hevy and Strong share Inter + white/navy + blue. A Claude subagent independently proposed the field-book direction; adopted its yellow paper, fonts and stamps. Codex unavailable. |
+| 2026-10-01 | Added the welcome flow, exercise table and day editor in the Field Book style | User feedback: no intro on open; exercises must be your own |

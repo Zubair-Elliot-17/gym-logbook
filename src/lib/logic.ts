@@ -92,21 +92,14 @@ export function lastTime(exerciseId: string, sets: SetRow[], dayLogs: DayLog[], 
     .sort(byLoggedAt)
 }
 
-// ---- Exercise list for a day (plan + carry-over) ----
+// ---- Exercise list for a day ----
 
 /**
- * Rows shown on a lifting day, in order: the planned exercises, then off-plan exercises logged on the
- * previous non-skipped occurrence of this day (carry-over), then anything logged today, then exercises
- * added to today's draft.
+ * Rows shown on a lifting day, in order: the day's plan (the user's own exercises), then any other
+ * exercise logged today (e.g. one removed from the plan mid-session), then exercises in today's draft.
  */
-export function exerciseOrder(args: {
-  pos: Position
-  plan: DayExercise[]
-  sets: SetRow[]
-  dayLogs: DayLog[]
-  draftAdded?: string[]
-}): string[] {
-  const { pos, plan, sets, dayLogs, draftAdded = [] } = args
+export function exerciseOrder(args: { pos: Position; plan: DayExercise[]; sets: SetRow[]; draftAdded?: string[] }): string[] {
+  const { pos, plan, sets, draftAdded = [] } = args
   const ids = plan
     .filter((p) => p.cycleDayId === pos.cycleDayId)
     .sort((a, b) => a.order - b.order)
@@ -119,15 +112,10 @@ export function exerciseOrder(args: {
     }
   }
   const current = keyOf(pos.cycleNumber, pos.cycleDayId)
-  const prev = dayLogs
-    .filter((l) => l.cycleDayId === pos.cycleDayId && !l.skipped && keyOf(l.cycleNumber, l.cycleDayId) !== current)
-    .sort((a, b) => (a.finishedAt < b.finishedAt ? 1 : -1))[0]
-  const sorted = [...sets].sort(byLoggedAt)
-  if (prev) {
-    const prevKey = keyOf(prev.cycleNumber, prev.cycleDayId)
-    sorted.filter((s) => keyOf(s.cycleNumber, s.cycleDayId) === prevKey).forEach((s) => add(s.exerciseId))
-  }
-  sorted.filter((s) => keyOf(s.cycleNumber, s.cycleDayId) === current).forEach((s) => add(s.exerciseId))
+  ;[...sets]
+    .sort(byLoggedAt)
+    .filter((s) => keyOf(s.cycleNumber, s.cycleDayId) === current)
+    .forEach((s) => add(s.exerciseId))
   draftAdded.forEach(add)
   return ids
 }

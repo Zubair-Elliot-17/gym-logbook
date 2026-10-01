@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { onboard } from './onboard'
 
 test('after one online load the app works offline: reload, fonts, logging', async ({ page, context }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Start with Upper →' }).click()
-  await expect(page.getByRole('heading', { name: 'Upper', level: 1 })).toBeVisible()
+  await onboard(page)
 
   // Wait for the service worker to finish precaching and take control.
   await page.evaluate(() => navigator.serviceWorker.ready)
