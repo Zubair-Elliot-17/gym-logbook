@@ -280,6 +280,11 @@ export async function deleteSet(d: LogbookDB, id: string): Promise<void> {
   await d.sets.delete(id)
 }
 
+/** Undo a delete: put the exact row back. */
+export async function restoreSet(d: LogbookDB, row: SetRow): Promise<void> {
+  await d.sets.put(row)
+}
+
 // ---- Activities (rest days) ----
 
 export async function logActivity(d: LogbookDB, input: { kind: string; minutes: number }): Promise<Activity> {

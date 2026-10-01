@@ -1,0 +1,63 @@
+/* Design tokens: see DESIGN.md (design review 7A–10A). */
+
+@font-face {
+  font-family: 'Instrument Sans';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/instrument-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Instrument Sans';
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/instrument-sans-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/barlow-condensed-latin-600-normal.woff2') format('woff2');
+}
+
+:root {
+  color-scheme: light dark;
+
+  --paper: #f4f5f2;
+  --ink: #15171a;
+  --muted: #5c6166;
+  --line: #c9cccf;
+  --next: #e6e8ea;
+  --accent: #c8102e; /* PR badges and destructive confirms only */
+
+  --font-ui: 'Instrument Sans', system-ui, -apple-system, sans-serif;
+  --font-num: 'Barlow Condensed', system-ui, -apple-system, sans-serif;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --radius: 10px;
+
+  --tap: 48px;
+  --set-h: 56px;
+  --bar-h: 64px;
+
+  --fs-num: 22px;
+  --fs-day: 28px;
+  --fs-body: 16px;
+  --fs-caption: 13px;
+  --fs-badge: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0f1113;
+    --ink: #ecedea;
+    --muted: #9aa0a6;
+    --line: #34383c;
+    --next: #22262a;
+    --accent: #ff4d5e;
+  }
+}
