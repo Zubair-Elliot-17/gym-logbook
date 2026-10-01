@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LogbookDB, addExerciseToDay, createExercise, finishDay, jumpTo, logActivity, logSet, openDb } from './db'
-import { buildLiftRows, dayHeading, finishSummary, loadToday, shortName } from './today'
+import { buildLiftRows, dayHeading, daysAgo, finishSummary, lastFinish, loadToday, pickBanner, shortName } from './today'
 
 let d: LogbookDB
 let n = 0
@@ -52,5 +52,28 @@ describe('today view model', () => {
 
   it('shortens tile names', () => {
     expect(['Upper', 'Active rest', 'Recovery', 'Back & Chest'].map(shortName)).toEqual(['Upper', 'Active', 'Recov', 'B+C'])
+  })
+})
+
+describe('notices', () => {
+  it('shows one banner: install > offline > backup', () => {
+    expect(pickBanner({ standalone: false, offlineReady: false, backupOverdue: true })).toBe('install')
+    expect(pickBanner({ standalone: true, offlineReady: false, backupOverdue: true })).toBe('offline')
+    expect(pickBanner({ standalone: true, offlineReady: true, backupOverdue: true })).toBe('backup')
+    expect(pickBanner({ standalone: true, offlineReady: true, backupOverdue: false })).toBeNull()
+  })
+
+  it('formats days ago by calendar day', () => {
+    const now = new Date(2026, 9, 17, 9, 0)
+    expect(daysAgo(new Date(2026, 9, 17, 1, 0).toISOString(), now)).toBe('today')
+    expect(daysAgo(new Date(2026, 9, 16, 23, 0).toISOString(), now)).toBe('yesterday')
+    expect(daysAgo(new Date(2026, 9, 1, 12, 0).toISOString(), now)).toBe('16 days ago')
+  })
+
+  it('names the Finish that Go back a day would undo', async () => {
+    expect(lastFinish(await loadToday(d))).toBeNull()
+    await finishDay(d)
+    await finishDay(d)
+    expect(lastFinish(await loadToday(d))?.dayName).toBe('Lower')
   })
 })

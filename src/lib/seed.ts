@@ -95,5 +95,10 @@ export const dayExercises: DayExercise[] = Object.entries(plan).flatMap(([cycleD
   })),
 )
 
-// Quick-log chips on rest days.
-export const restActivities = ['Walk', 'Mobility', 'Sauna']
+// Quick-log chips on rest days: one tap logs the kind with its default minutes.
+export const restActivities: { kind: string; minutes: number }[] = [
+  { kind: 'Walk', minutes: 30 },
+  { kind: 'Mobility', minutes: 15 },
+  { kind: 'Sauna', minutes: 20 },
+  { kind: 'Bike', minutes: 30 },
+]

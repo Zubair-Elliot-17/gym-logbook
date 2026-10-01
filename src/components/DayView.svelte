@@ -25,9 +25,21 @@
   import ExerciseRow from './ExerciseRow.svelte'
   import FinishCard from './FinishCard.svelte'
   import SetSheet from './SetSheet.svelte'
+  import RestDay from './RestDay.svelte'
   import Sheet from './Sheet.svelte'
 
-  let { db, data }: { db: LogbookDB; data: TodayData } = $props()
+  let {
+    db,
+    data,
+    onsettings,
+    onfinished,
+  }: {
+    db: LogbookDB
+    data: TodayData
+    onsettings: () => void
+    /** After the Finish card closes: the one moment an app update may be offered (5A). */
+    onfinished?: () => void
+  } = $props()
 
   const isLift = $derived(data.day.type === 'lift')
   const rows = $derived(isLift ? buildLiftRows(data) : [])
@@ -135,6 +147,7 @@
     const name = card.summary.dayName
     card = null
     if (left > 300) toasts.undo(`${name} finished.`, undoFinish, left)
+    onfinished?.()
   }
 
   // ---- 2A: bring the next unfinished row to the top ----
@@ -184,6 +197,17 @@
 </script>
 
 <header class="head">
+  <button type="button" class="settings" aria-label="Settings" onclick={onsettings}>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
+      ><path
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4.5v5M8 14.5v5"
+      /></svg
+    >
+  </button>
   <h1>{data.day.name}</h1>
   <p class="caption">{dayHeading(data)}</p>
 </header>
@@ -207,7 +231,7 @@
     <button type="button" class="link" onclick={() => (sheet = { kind: 'add' })}>+ Add exercise</button>
   </div>
 {:else}
-  <p class="empty">Rest day logging (walk, mobility, sauna) arrives in the next update. Resting counts: Finish still fills the tile.</p>
+  <RestDay {db} {data} />
 {/if}
 
 <div class="grow"></div>
@@ -253,7 +277,18 @@
 
 <style>
   .head {
+    position: relative;
     margin: var(--s5) 0 var(--s3);
+  }
+  .settings {
+    position: absolute;
+    top: -6px;
+    right: -12px;
+    width: var(--tap);
+    height: var(--tap);
+    display: grid;
+    place-items: center;
+    color: var(--muted);
   }
   h1 {
     font-size: var(--fs-day);
