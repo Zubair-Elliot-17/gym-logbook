@@ -307,6 +307,11 @@ export async function deleteActivity(d: LogbookDB, id: string): Promise<void> {
   await d.activities.delete(id)
 }
 
+/** Undo a delete: put the exact row back. */
+export async function restoreActivity(d: LogbookDB, row: Activity): Promise<void> {
+  await d.activities.put(row)
+}
+
 // ---- Exercises ----
 
 /** "Add exercise" → Create. A name matching an existing exercise (any case) picks that one instead. */

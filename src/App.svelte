@@ -5,14 +5,20 @@
   import { onMount } from 'svelte'
   import DayView from './components/DayView.svelte'
   import FirstRun from './components/FirstRun.svelte'
+  import Settings from './components/Settings.svelte'
   import Toasts from './components/Toasts.svelte'
   import WeekStrip from './components/WeekStrip.svelte'
+  import { backupOverdue } from './lib/backup'
   import { db, openDb } from './lib/db'
-  import { loadToday, type TodayData } from './lib/today'
+  import { isStandalone, needRefresh, offlineReady, updateApp } from './lib/pwa'
+  import { loadToday, pickBanner, type TodayData } from './lib/today'
+  import { toasts } from './lib/toast.svelte'
 
   let status = $state<'loading' | 'error' | 'ready'>('loading')
   let data = $state.raw<TodayData | null>(null)
   let sub: { unsubscribe(): void } | undefined
+  let view = $state<'today' | 'settings'>('today')
+  const standalone = isStandalone()
 
   async function start() {
     status = 'loading'
@@ -41,6 +47,24 @@
     return () => sub?.unsubscribe()
   })
 
+  const banner = $derived(
+    data ? pickBanner({ standalone, offlineReady: $offlineReady, backupOverdue: backupOverdue(data.state) }) : null,
+  )
+
+  // 5A: an update is offered in Settings, and once per session right after a Finish.
+  let updateOffered = false
+  function afterFinish() {
+    if ($needRefresh && !updateOffered) {
+      updateOffered = true
+      setTimeout(() => toasts.show({ kind: 'status', text: 'An app update is ready.', action: { label: 'Update', run: updateApp } }, 8000), 3200)
+    }
+  }
+
+  function openSettings() {
+    view = 'settings'
+    window.scrollTo(0, 0)
+  }
+
   const hasEntries = $derived(
     data !== null &&
       (data.activities.length > 0 ||
@@ -62,13 +86,42 @@
     <div class="skel row"></div>
   </main>
 {:else if !data.state.startPicked}
-  <div class="col"><FirstRun {db} {data} /></div>
+  <div class="col">
+    {#if !standalone}{@render bannerText('install')}{/if}
+    <FirstRun {db} {data} />
+  </div>
+{:else if view === 'settings'}
+  <main class="col">
+    <Settings
+      {db}
+      {data}
+      {standalone}
+      offlineReady={$offlineReady}
+      updateReady={$needRefresh}
+      onupdate={updateApp}
+      onclose={() => (view = 'today')}
+    />
+  </main>
 {:else}
   <main class="col">
+    {#if banner}{@render bannerText(banner)}{/if}
     <WeekStrip {db} {data} {hasEntries} />
-    <DayView {db} {data} />
+    <DayView {db} {data} onsettings={openSettings} onfinished={afterFinish} />
   </main>
 {/if}
+
+{#snippet bannerText(kind: 'install' | 'offline' | 'backup')}
+  <div class="banner" role="note">
+    {#if kind === 'install'}
+      <span>Not installed yet. Tap Share → Add to Home Screen first, or your logs won’t be kept.</span>
+    {:else if kind === 'offline'}
+      <span>Not ready offline yet: open once with signal.</span>
+    {:else}
+      <span>Two cycles since your last backup.</span>
+      <button type="button" class="banner-link" onclick={openSettings}>Back up</button>
+    {/if}
+  </div>
+{/snippet}
 
 <Toasts />
 
@@ -88,6 +141,25 @@
   }
   .error h1 {
     font-size: var(--fs-day);
+  }
+  .banner {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    margin-bottom: var(--s3);
+    padding: var(--s2) var(--s3);
+    border: 1px dashed var(--ink);
+    border-radius: var(--radius);
+    font-size: var(--fs-caption);
+  }
+  .banner span {
+    flex: 1;
+  }
+  .banner-link {
+    min-height: var(--tap);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
   .skel {
     background: var(--next);

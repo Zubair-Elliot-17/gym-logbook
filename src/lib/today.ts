@@ -110,7 +110,9 @@ export interface FinishSummary {
 export function finishSummary(data: TodayData, rows: LiftRow[]): FinishSummary {
   const name = data.day.name
   if (data.day.type === 'rest') {
-    const lines = data.activities.map((a) => `${a.kind} ${a.minutes} min`)
+    const lines = [...data.activities]
+      .sort((a, b) => (a.loggedAt < b.loggedAt ? -1 : 1))
+      .map((a) => `${a.kind} ${a.minutes} min`)
     return { dayName: name, title: `${name} done`, lines }
   }
   const sets = loggedCount(rows)
@@ -140,4 +142,28 @@ export function shortName(name: string): string {
   }
   const first = name.split(/\s+/)[0]
   return first.length > 6 ? first.slice(0, 5) : first
+}
+
+export type Banner = 'install' | 'offline' | 'backup' | null
+
+/** 5A: Today shows at most one banner, in this order. */
+export function pickBanner(n: { standalone: boolean; offlineReady: boolean; backupOverdue: boolean }): Banner {
+  if (!n.standalone) return 'install'
+  if (!n.offlineReady) return 'offline'
+  if (n.backupOverdue) return 'backup'
+  return null
+}
+
+/** "today", "yesterday", "N days ago" (calendar days in local time). */
+export function daysAgo(iso: string, now = new Date()): string {
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const n = Math.round((day(now) - day(new Date(iso))) / 86_400_000)
+  return n <= 0 ? 'today' : n === 1 ? 'yesterday' : `${n} days ago`
+}
+
+/** The Finish that "Go back a day" would undo, if any. */
+export function lastFinish(data: TodayData): { dayLog: DayLog; dayName: string } | null {
+  const latest = [...data.dayLogs].sort((a, b) => (a.finishedAt < b.finishedAt ? 1 : -1))[0]
+  if (!latest) return null
+  return { dayLog: latest, dayName: data.days.find((x) => x.id === latest.cycleDayId)?.name ?? latest.cycleDayId }
 }
