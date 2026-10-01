@@ -57,6 +57,8 @@ export interface AppState {
   /** The first-run "Which day are you on?" prompt has been answered. */
   startPicked: boolean
   lastExportAt: string | null
+  /** cycleNumber when the last export was recorded; the reminder fires 2 cycles later. */
+  lastExportCycle: number | null
 }
 
 /** Unlogged tweaks for one day, so they survive iOS killing the app mid-workout (eng review E4). */
@@ -71,6 +73,24 @@ export interface Draft {
   added: string[]
 }
 
+/** Full copy of the data tables, saved before an import so it can be undone. Not exported. */
+export interface Snapshot {
+  id: 'pre-import'
+  takenAt: string
+  data: BackupTables
+}
+
+/** Every exported table. Drafts and snapshots are device-only. */
+export interface BackupTables {
+  cycleDay: CycleDay[]
+  exercise: Exercise[]
+  dayExercise: DayExercise[]
+  set: SetRow[]
+  activity: Activity[]
+  dayLog: DayLog[]
+  state: AppState
+}
+
 /** Dexie schema version. Export `formatVersion` is kept equal to it (eng review #3). */
 export const SCHEMA_VERSION = 1
 
@@ -83,6 +103,7 @@ export class LogbookDB extends Dexie {
   declare dayLogs: Table<DayLog, string>
   declare state: Table<AppState, string>
   declare drafts: Table<Draft, [number, string]>
+  declare snapshots: Table<Snapshot, string>
 
   constructor(name = 'gym-logbook') {
     super(name)
@@ -95,6 +116,7 @@ export class LogbookDB extends Dexie {
       dayLogs: 'id, &[cycleNumber+cycleDayId], cycleDayId, finishedAt',
       state: 'id',
       drafts: '[cycleNumber+cycleDayId]',
+      snapshots: 'id',
     })
   }
 }
@@ -220,6 +242,7 @@ export async function syncSeed(d: LogbookDB, seed: Seed = SEED): Promise<void> {
           seedVersion: seed.version,
           startPicked: false,
           lastExportAt: null,
+          lastExportCycle: null,
         })
       }
     },
