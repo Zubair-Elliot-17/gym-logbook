@@ -44,7 +44,7 @@
     <ol class="how">
       <li>
         <span class="n num">1</span>
-        <span><strong>Your week, in order.</strong> Upper, Lower, Active rest, Recovery, Arms, Back &amp; Chest. Finish a day and the next one comes up.</span>
+        <span><strong>Your week, in order.</strong> {activeDays(data.days).map((d) => d.name).join(', ')}. Finish a day and the next one comes up. You can change these in Settings.</span>
       </li>
       <li>
         <span class="n num">2</span>

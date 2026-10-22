@@ -236,6 +236,8 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--s2);
+    /* Set text scales with the row so "142.5 × 10" fits three across on a 320px phone */
+    container-type: inline-size;
   }
   /* Ghost: a dotted pencil outline of last time's set */
   .ghost {
@@ -246,6 +248,7 @@
     border-radius: var(--radius);
     color: var(--pencil);
     font-size: var(--fs-num);
+    font-size: min(var(--fs-num), 5.2cqi);
     white-space: nowrap;
     -webkit-touch-callout: none;
     user-select: none;
