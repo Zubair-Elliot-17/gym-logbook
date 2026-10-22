@@ -36,6 +36,7 @@
     greet = false,
     onsettings,
     onhistory,
+    onprogress,
     oneditplan,
     onfinished,
   }: {
@@ -45,6 +46,8 @@
     greet?: boolean
     onsettings: () => void
     onhistory: () => void
+    /** Open one exercise's progress. */
+    onprogress: (exerciseId: string) => void
     /** Open "Your exercises" for today's day. */
     oneditplan: () => void
     /** After the Finish card closes: the one moment an app update may be offered (5A). */
@@ -257,6 +260,7 @@
       onadjust={(dir) => adjust(row, dir)}
       onextra={() => void attempt(() => addExtraSet(db, row.exercise.id), 'Couldn’t add a set.')}
       ontoggle={() => (expanded.has(row.exercise.id) ? expanded.delete(row.exercise.id) : expanded.add(row.exercise.id))}
+      onprogress={() => onprogress(row.exercise.id)}
     />
   {/each}
   {#if rows.length > 0}

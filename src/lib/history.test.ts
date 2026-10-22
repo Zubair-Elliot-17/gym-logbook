@@ -1,6 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LogbookDB, createExercise, finishDay, jumpTo, logActivity, logSet, openDb } from './db'
-import { byMonth, formatDate, formatKg, loadHistory, sessionSummary, sessions } from './history'
+import {
+  byMonth,
+  chartPoints,
+  e1rm,
+  exerciseIndex,
+  exerciseSessions,
+  exerciseStats,
+  formatDate,
+  formatKg,
+  loadHistory,
+  sessionSummary,
+  sessions,
+  topSet,
+} from './history'
 
 let d: LogbookDB
 let n = 0
@@ -64,6 +77,58 @@ describe('sessions', () => {
     const first = await lift('bench-press', 60, 8)
     await finishDay(d)
     expect(sessions(await loadHistory(d))[0].date).toBe(first.loggedAt)
+  })
+})
+
+describe('one exercise', () => {
+  it('estimates a 1RM with Epley; a single is itself, bodyweight has none', () => {
+    expect(e1rm(100, 1)).toBe(100)
+    expect(e1rm(100, 5)).toBe(116.7)
+    expect(e1rm(60, 10)).toBe(80)
+    expect(e1rm(0, 12)).toBe(0)
+  })
+
+  it('picks the heaviest set, then the one with more reps', () => {
+    const s = (weightKg: number, reps: number) => ({ weightKg, reps }) as Parameters<typeof topSet>[0][number]
+    expect(topSet([s(60, 8), s(65, 5), s(65, 6), s(62.5, 10)])).toMatchObject({ weightKg: 65, reps: 6 })
+    expect(topSet([])).toBeUndefined()
+  })
+
+  it('lists sessions newest first with the best e1RM, PRs, and today still open', async () => {
+    await createExercise(d, 'Bench press', 'barbell')
+    for (const [w, r] of [[60, 8], [60, 8]]) await lift('bench-press', w, r)
+    await finishDay(d) // Upper, cycle 1
+    await finishDay(d) // Lower, skipped
+    await jumpTo(d, 'arms')
+    await lift('bench-press', 65, 5)
+    await lift('bench-press', 60, 10)
+
+    const data = await loadHistory(d)
+    const list = exerciseSessions('bench-press', data)
+    expect(list.map((s) => [s.dayName, s.finished, s.value, s.hasPR, s.top.weightKg])).toEqual([
+      ['Arms', false, 80, true, 65],
+      ['Upper', true, 76, false, 60],
+    ])
+    expect(chartPoints(list).map((p) => p.value)).toEqual([76, 80])
+
+    const st = exerciseStats('bench-press', data)
+    expect(st).toMatchObject({ metric: 'e1rm', sessions: 2, sets: 4, prs: 2, volumeKg: 1885 })
+    expect(st.best).toMatchObject({ value: 80, set: { weightKg: 60, reps: 10 } })
+    expect(st.heaviest).toMatchObject({ weightKg: 65, reps: 5 })
+  })
+
+  it('tracks reps for bodyweight work and indexes exercises by last trained', async () => {
+    const pullUp = (await createExercise(d, 'Pull-up', 'machine')).id
+    await createExercise(d, 'Bench press', 'barbell')
+    await lift('bench-press', 60, 8)
+    await lift(pullUp, 0, 8)
+    await lift(pullUp, 0, 11)
+    const data = await loadHistory(d)
+    expect(exerciseStats(pullUp, data)).toMatchObject({ metric: 'reps', best: { value: 11 }, volumeKg: 0 })
+    expect(exerciseIndex(data).map((r) => [r.exercise.name, r.bestText])).toEqual([
+      ['Pull-up', 'Best 11 reps'],
+      ['Bench press', 'Best 76\u00a0kg e1RM'],
+    ])
   })
 })
 

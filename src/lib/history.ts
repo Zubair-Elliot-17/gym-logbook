@@ -3,7 +3,7 @@
 
 import type { CycleDay, Exercise } from './seed'
 import type { Activity, DayLog, LogbookDB, SetRow } from './db'
-import { prSetIds } from './logic'
+import { formatWeight, prSetIds } from './logic'
 
 export interface HistoryData {
   days: CycleDay[]
@@ -140,9 +140,157 @@ export function formatDate(iso: string, now = new Date()): string {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
+// ---- One exercise ----
+
+/**
+ * Estimated one-rep max (Epley: w × (1 + reps/30)). A single is its own weight. Bodyweight (0 kg) has
+ * no 1RM. Past ~12 reps the estimate drifts high, but it's consistent, which is what a trend needs.
+ */
+export function e1rm(weightKg: number, reps: number): number {
+  if (weightKg === 0) return 0
+  if (reps === 1) return weightKg
+  return Math.round(weightKg * (1 + reps / 30) * 10) / 10
+}
+
+/** Heavier wins; at the same weight, more reps. */
+export function topSet(sets: SetRow[]): SetRow | undefined {
+  return sets.reduce<SetRow | undefined>(
+    (best, s) => (!best || s.weightKg > best.weightKg || (s.weightKg === best.weightKg && s.reps > best.reps) ? s : best),
+    undefined,
+  )
+}
+
+export interface ExerciseSession {
+  key: string
+  cycleNumber: number
+  cycleDayId: string
+  dayName: string
+  date: string
+  /** False for today's day while it's still open. */
+  finished: boolean
+  sets: SetRow[]
+  top: SetRow
+  /** The session's best e1RM, or its best reps for bodyweight work. */
+  value: number
+  hasPR: boolean
+}
+
+/** What the chart and "best" track: e1RM, or reps when every set is bodyweight. */
+export type Metric = 'e1rm' | 'reps'
+
+export function metricFor(sets: SetRow[]): Metric {
+  return sets.length > 0 && sets.every((s) => s.weightKg === 0) ? 'reps' : 'e1rm'
+}
+
+const valueOf = (metric: Metric) => (s: SetRow) => (metric === 'reps' ? s.reps : e1rm(s.weightKg, s.reps))
+
+/** Every day this exercise was logged on, newest first, including today's open day. */
+export function exerciseSessions(exerciseId: string, data: HistoryData): ExerciseSession[] {
+  const sets = data.sets.filter((s) => s.exerciseId === exerciseId).sort(byLoggedAt)
+  const metric = metricFor(sets)
+  const value = valueOf(metric)
+  const prs = prSetIds(sets)
+  const finished = new Set(data.dayLogs.map((l) => sessionKey(l.cycleNumber, l.cycleDayId)))
+  const dayName = new Map(data.days.map((x) => [x.id, x.name]))
+
+  const groups = new Map<string, SetRow[]>()
+  for (const s of sets) {
+    const k = sessionKey(s.cycleNumber, s.cycleDayId)
+    groups.set(k, [...(groups.get(k) ?? []), s])
+  }
+  return [...groups]
+    .map(([key, rows]) => ({
+      key,
+      cycleNumber: rows[0].cycleNumber,
+      cycleDayId: rows[0].cycleDayId,
+      dayName: dayName.get(rows[0].cycleDayId) ?? rows[0].cycleDayId,
+      date: rows[0].loggedAt,
+      finished: finished.has(key),
+      sets: rows,
+      top: topSet(rows)!,
+      value: Math.max(...rows.map(value)),
+      hasPR: rows.some((s) => prs.has(s.id)),
+    }))
+    .reverse()
+}
+
+export interface ExerciseStats {
+  metric: Metric
+  /** Best e1RM (or reps) ever, and the set that made it. */
+  best: { value: number; set: SetRow } | null
+  heaviest: SetRow | null
+  sessions: number
+  sets: number
+  prs: number
+  /** Kilos lifted, all time. */
+  volumeKg: number
+}
+
+export function exerciseStats(exerciseId: string, data: HistoryData): ExerciseStats {
+  const sets = data.sets.filter((s) => s.exerciseId === exerciseId)
+  const metric = metricFor(sets)
+  const value = valueOf(metric)
+  let best: ExerciseStats['best'] = null
+  for (const s of [...sets].sort(byLoggedAt)) {
+    const v = value(s)
+    if (!best || v > best.value) best = { value: v, set: s }
+  }
+  return {
+    metric,
+    best,
+    heaviest: topSet(sets) ?? null,
+    sessions: new Set(sets.map((s) => sessionKey(s.cycleNumber, s.cycleDayId))).size,
+    sets: sets.length,
+    prs: prSetIds(sets).size,
+    volumeKg: sets.reduce((v, s) => v + s.weightKg * s.reps, 0),
+  }
+}
+
+export interface ExerciseIndexRow {
+  exercise: Exercise
+  lastDate: string
+  sessions: number
+  /** "Best 82.5 kg e1RM" or "Best 15 reps". */
+  bestText: string
+}
+
+/** Every exercise with at least one logged set, most recently trained first. */
+export function exerciseIndex(data: HistoryData): ExerciseIndexRow[] {
+  const exById = new Map(data.exercises.map((e) => [e.id, e]))
+  const ids = new Map<string, string>()
+  for (const s of data.sets) if ((ids.get(s.exerciseId) ?? '') < s.loggedAt) ids.set(s.exerciseId, s.loggedAt)
+  return [...ids]
+    .sort((a, b) => (a[1] < b[1] ? 1 : -1))
+    .map(([id, lastDate]) => {
+      const st = exerciseStats(id, data)
+      return {
+        exercise: exById.get(id) ?? { id, name: id, stepKg: 2.5 },
+        lastDate,
+        sessions: st.sessions,
+        bestText: bestText(st),
+      }
+    })
+}
+
+export function bestText(st: ExerciseStats): string {
+  if (!st.best) return ''
+  return st.metric === 'reps' ? `Best ${st.best.value} reps` : `Best ${formatWeight(st.best.value)} kg e1RM`
+}
+
+export interface ChartPoint {
+  date: string
+  value: number
+  pr: boolean
+}
+
+/** Chart data: one point per session, oldest first. */
+export function chartPoints(list: ExerciseSession[]): ChartPoint[] {
+  return [...list].reverse().map((s) => ({ date: s.date, value: s.value, pr: s.hasPR }))
+}
+
 /** Group sessions under month headings ("October 2026"), keeping their order. */
-export function byMonth(list: Session[]): { month: string; sessions: Session[] }[] {
-  const groups: { month: string; sessions: Session[] }[] = []
+export function byMonth<T extends { date: string }>(list: T[]): { month: string; sessions: T[] }[] {
+  const groups: { month: string; sessions: T[] }[] = []
   for (const s of list) {
     const d = new Date(s.date)
     const month = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`

@@ -23,7 +23,7 @@
   type View =
     | { kind: 'today' }
     | { kind: 'settings' }
-    | { kind: 'history' }
+    | { kind: 'history'; exerciseId?: string }
     | { kind: 'plan'; dayId: string; back: 'today' | 'settings' }
   let view = $state<View>({ kind: 'today' })
   /** Welcome was finished in an earlier session: greet with "Welcome back" (not right after the welcome). */
@@ -77,8 +77,8 @@
     window.scrollTo(0, 0)
   }
 
-  function openHistory() {
-    view = { kind: 'history' }
+  function openHistory(exerciseId?: string) {
+    view = { kind: 'history', exerciseId }
     window.scrollTo(0, 0)
   }
 
@@ -126,7 +126,7 @@
   </main>
 {:else if view.kind === 'history'}
   <main class="col">
-    <History {db} onclose={() => (view = { kind: 'today' })} />
+    <History {db} exerciseId={view.exerciseId} onclose={() => (view = { kind: 'today' })} />
   </main>
 {:else if view.kind === 'settings'}
   <main class="col">
@@ -145,7 +145,7 @@
   <main class="col">
     {#if banner}{@render bannerText(banner)}{/if}
     <WeekStrip {db} {data} {hasEntries} />
-    <DayView {db} {data} greet={returning === true} onsettings={openSettings} onhistory={openHistory} onfinished={afterFinish} oneditplan={() => openPlan(data!.pos.cycleDayId, 'today')} />
+    <DayView {db} {data} greet={returning === true} onsettings={openSettings} onhistory={() => openHistory()} onprogress={openHistory} onfinished={afterFinish} oneditplan={() => openPlan(data!.pos.cycleDayId, 'today')} />
   </main>
 {/if}
 

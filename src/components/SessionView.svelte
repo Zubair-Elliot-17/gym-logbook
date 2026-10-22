@@ -11,11 +11,13 @@
   let {
     db,
     session,
+    backLabel = '‹ History',
     onback,
     onexercise,
   }: {
     db: LogbookDB
     session: Session
+    backLabel?: string
     onback: () => void
     /** Open an exercise's progress. */
     onexercise?: (exerciseId: string) => void
@@ -45,7 +47,7 @@
 </script>
 
 <header class="head">
-  <button type="button" class="link" onclick={onback}>‹ History</button>
+  <button type="button" class="link" onclick={onback}>{backLabel}</button>
   <h1 class="display">{session.dayName}</h1>
   <p class="label">{formatDate(session.date)} · cycle #{session.cycleNumber}</p>
   <p class="label">{sessionSummary(session)}</p>
