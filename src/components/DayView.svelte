@@ -35,6 +35,7 @@
     data,
     greet = false,
     onsettings,
+    onhistory,
     oneditplan,
     onfinished,
   }: {
@@ -43,6 +44,7 @@
     /** Show "Welcome back" (opened in a later session, nothing logged yet today). */
     greet?: boolean
     onsettings: () => void
+    onhistory: () => void
     /** Open "Your exercises" for today's day. */
     oneditplan: () => void
     /** After the Finish card closes: the one moment an app update may be offered (5A). */
@@ -210,6 +212,18 @@
 </script>
 
 <header class="head">
+  <button type="button" class="history" aria-label="History" onclick={onhistory}>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
+      ><path
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11M9 8h6"
+      /></svg
+    >
+  </button>
   <button type="button" class="settings" aria-label="Settings" onclick={onsettings}>
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
       ><path
@@ -303,7 +317,8 @@
     position: relative;
     margin: var(--s5) 0 var(--s3);
   }
-  .settings {
+  .settings,
+  .history {
     position: absolute;
     top: -6px;
     right: -12px;
@@ -313,12 +328,15 @@
     place-items: center;
     color: var(--pencil);
   }
+  .history {
+    right: calc(var(--tap) - 12px);
+  }
   .meta {
     margin-top: var(--s2);
   }
   h1 {
     font-size: var(--fs-day);
-    padding-right: var(--tap);
+    padding-right: calc(2 * var(--tap) - 12px);
     line-height: 1.15;
   }
   .empty {

@@ -5,6 +5,7 @@
   import { onMount } from 'svelte'
   import DayView from './components/DayView.svelte'
   import FirstRun from './components/FirstRun.svelte'
+  import History from './components/History.svelte'
   import PlanEditor from './components/PlanEditor.svelte'
   import Welcome from './components/Welcome.svelte'
   import Settings from './components/Settings.svelte'
@@ -19,7 +20,11 @@
   let status = $state<'loading' | 'error' | 'ready'>('loading')
   let data = $state.raw<TodayData | null>(null)
   let sub: { unsubscribe(): void } | undefined
-  type View = { kind: 'today' } | { kind: 'settings' } | { kind: 'plan'; dayId: string; back: 'today' | 'settings' }
+  type View =
+    | { kind: 'today' }
+    | { kind: 'settings' }
+    | { kind: 'history' }
+    | { kind: 'plan'; dayId: string; back: 'today' | 'settings' }
   let view = $state<View>({ kind: 'today' })
   /** Welcome was finished in an earlier session: greet with "Welcome back" (not right after the welcome). */
   let returning = $state<boolean | null>(null)
@@ -72,6 +77,11 @@
     window.scrollTo(0, 0)
   }
 
+  function openHistory() {
+    view = { kind: 'history' }
+    window.scrollTo(0, 0)
+  }
+
   function openPlan(dayId: string, back: 'today' | 'settings') {
     view = { kind: 'plan', dayId, back }
     window.scrollTo(0, 0)
@@ -114,6 +124,10 @@
       onback={() => (view = { kind: back })}
     />
   </main>
+{:else if view.kind === 'history'}
+  <main class="col">
+    <History {db} onclose={() => (view = { kind: 'today' })} />
+  </main>
 {:else if view.kind === 'settings'}
   <main class="col">
     <Settings
@@ -131,7 +145,7 @@
   <main class="col">
     {#if banner}{@render bannerText(banner)}{/if}
     <WeekStrip {db} {data} {hasEntries} />
-    <DayView {db} {data} greet={returning === true} onsettings={openSettings} onfinished={afterFinish} oneditplan={() => openPlan(data!.pos.cycleDayId, 'today')} />
+    <DayView {db} {data} greet={returning === true} onsettings={openSettings} onhistory={openHistory} onfinished={afterFinish} oneditplan={() => openPlan(data!.pos.cycleDayId, 'today')} />
   </main>
 {/if}
 
