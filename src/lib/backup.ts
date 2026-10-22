@@ -154,6 +154,7 @@ const SHAPES = {
     startPicked: isBool,
     welcomed: (v: unknown) => v === undefined || isBool(v),
     restSeconds: (v: unknown) => v === undefined || (isInt(0)(v) && (v as number) <= 600),
+    customSplit: (v: unknown) => v === undefined || isBool(v),
     lastExportAt: orNull(isIso),
     lastExportCycle: orNull(isInt(1)),
   },

@@ -59,6 +59,8 @@ export interface AppState {
   welcomed?: boolean
   /** Rest timer length after a logged set; 0 = off. Missing = the default (rest.ts). */
   restSeconds?: number
+  /** The user has edited the split in the app: seed.ts no longer touches the days. */
+  customSplit?: boolean
   lastExportAt: string | null
   /** cycleNumber when the last export was recorded; the reminder fires 2 cycles later. */
   lastExportCycle: number | null
@@ -192,6 +194,16 @@ export interface Seed {
 
 export const SEED: Seed = { version: SEED_VERSION, cycleDays: seedDays }
 
+/** A day with any logged set, activity or Finish: removing it archives instead of deleting. */
+async function dayUsed(d: LogbookDB, cycleDayId: string): Promise<boolean> {
+  return (
+    (await d.sets.where('cycleDayId').equals(cycleDayId).count()) +
+      (await d.activities.where('cycleDayId').equals(cycleDayId).count()) +
+      (await d.dayLogs.where('cycleDayId').equals(cycleDayId).count()) >
+    0
+  )
+}
+
 async function setCount(d: LogbookDB, exerciseId: string): Promise<number> {
   return d.sets.where('[exerciseId+loggedAt]').between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey]).count()
 }
@@ -204,17 +216,16 @@ export async function syncSeed(d: LogbookDB, seed: Seed = SEED): Promise<void> {
       const st = await d.state.get('app')
       if (st && st.seedVersion >= seed.version) return
 
-      const seedDayIds = new Set(seed.cycleDays.map((x) => x.id))
-      for (const day of await d.cycleDays.toArray()) {
-        if (seedDayIds.has(day.id)) continue
-        const used =
-          (await d.sets.where('cycleDayId').equals(day.id).count()) +
-          (await d.activities.where('cycleDayId').equals(day.id).count()) +
-          (await d.dayLogs.where('cycleDayId').equals(day.id).count())
-        if (used > 0) await d.cycleDays.put({ ...day, archived: true })
-        else await d.cycleDays.delete(day.id)
+      // A split edited in the app is the user's own: a newer seed never rewrites it.
+      if (!st?.customSplit) {
+        const seedDayIds = new Set(seed.cycleDays.map((x) => x.id))
+        for (const day of await d.cycleDays.toArray()) {
+          if (seedDayIds.has(day.id)) continue
+          if (await dayUsed(d, day.id)) await d.cycleDays.put({ ...day, archived: true })
+          else await d.cycleDays.delete(day.id)
+        }
+        await d.cycleDays.bulkPut(seed.cycleDays)
       }
-      await d.cycleDays.bulkPut(seed.cycleDays)
 
       // Plan rows for days that no longer exist go away (their history stays).
       const activeIds = new Set(activeDays(await d.cycleDays.toArray()).map((x) => x.id))
@@ -434,6 +445,107 @@ export async function setRestSeconds(d: LogbookDB, seconds: number): Promise<voi
 /** The welcome + setup flow is done. */
 export async function finishWelcome(d: LogbookDB): Promise<void> {
   await d.state.update('app', { welcomed: true })
+}
+
+// ---- Your split (the cycle days) ----
+
+export const MAX_DAYS = 10
+export const MAX_DAY_NAME = 24
+
+export class SplitError extends Error {}
+
+function checkDayName(name: string): string {
+  const trimmed = name.trim().replace(/\s+/g, ' ')
+  if (trimmed === '') throw new SplitError('The day needs a name')
+  if (trimmed.length > MAX_DAY_NAME) throw new SplitError(`Keep it to ${MAX_DAY_NAME} letters`)
+  return trimmed
+}
+
+/** Any change to the split: run it, then mark the split as the user's own. */
+function editSplit<T>(d: LogbookDB, change: (st: AppState, days: CycleDay[]) => Promise<T>): Promise<T> {
+  return d.transaction('rw', [d.cycleDays, d.dayExercises, d.sets, d.activities, d.dayLogs, d.state], async () => {
+    const st = await getState(d)
+    const result = await change(st, activeDays(await d.cycleDays.toArray()))
+    await d.state.update('app', { customSplit: true })
+    return result
+  })
+}
+
+/** Today with something logged can't change type or leave the split: finish it first. */
+async function refuseIfTodayInUse(d: LogbookDB, st: AppState, cycleDayId: string, what: string) {
+  if (st.currentCycleDayId === cycleDayId && (await hasEntries(d, positionOf(st)))) {
+    throw new SplitError(`It’s today and you’ve logged something. Finish it before you ${what}.`)
+  }
+}
+
+export async function renameDay(d: LogbookDB, cycleDayId: string, name: string): Promise<void> {
+  const trimmed = checkDayName(name)
+  return editSplit(d, async () => {
+    if ((await d.cycleDays.update(cycleDayId, { name: trimmed })) === 0) throw new Error(`Unknown day ${cycleDayId}`)
+  })
+}
+
+export async function setDayType(d: LogbookDB, cycleDayId: string, type: 'lift' | 'rest'): Promise<void> {
+  return editSplit(d, async (st) => {
+    const day = await d.cycleDays.get(cycleDayId)
+    if (!day) throw new Error(`Unknown day ${cycleDayId}`)
+    if (day.type === type) return
+    await refuseIfTodayInUse(d, st, cycleDayId, type === 'rest' ? 'make it a rest day' : 'make it a lifting day')
+    await d.cycleDays.update(cycleDayId, { type })
+  })
+}
+
+/** Add a day at the end of the split. Ids are a slug of the name plus a short suffix, never reused. */
+export async function addDay(d: LogbookDB, name: string, type: 'lift' | 'rest'): Promise<CycleDay> {
+  const trimmed = checkDayName(name)
+  return editSplit(d, async (_st, active) => {
+    if (active.length >= MAX_DAYS) throw new SplitError(`A split can have up to ${MAX_DAYS} days`)
+    const all = await d.cycleDays.toArray()
+    const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'day'
+    const day: CycleDay = {
+      id: `${slug}-${uuid().slice(0, 6)}`,
+      order: Math.max(0, ...all.map((x) => x.order)) + 1,
+      name: trimmed,
+      type,
+      archived: false,
+    }
+    await d.cycleDays.add(day)
+    return day
+  })
+}
+
+/** Move a day one place earlier (-1) or later (+1) in the split. */
+export async function moveDay(d: LogbookDB, cycleDayId: string, dir: 1 | -1): Promise<void> {
+  return editSplit(d, async (_st, active) => {
+    const i = active.findIndex((x) => x.id === cycleDayId)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= active.length) return
+    const a = active[i]
+    const b = active[j]
+    await d.cycleDays.bulkPut([
+      { ...a, order: b.order },
+      { ...b, order: a.order },
+    ])
+  })
+}
+
+/**
+ * Take a day out of the split. With history it's archived (its sets stay in History); without, it's
+ * deleted along with its plan. Today can't be removed: switch to another day first.
+ */
+export async function removeDay(d: LogbookDB, cycleDayId: string): Promise<'archived' | 'deleted'> {
+  return editSplit(d, async (st, active) => {
+    if (st.currentCycleDayId === cycleDayId) throw new SplitError('That’s today. Switch to another day first.')
+    if (!active.some((x) => x.id === cycleDayId)) throw new Error(`Unknown day ${cycleDayId}`)
+    if (active.length <= 1) throw new SplitError('A split needs at least one day')
+    await d.dayExercises.where('cycleDayId').equals(cycleDayId).delete()
+    if (await dayUsed(d, cycleDayId)) {
+      await d.cycleDays.update(cycleDayId, { archived: true })
+      return 'archived'
+    }
+    await d.cycleDays.delete(cycleDayId)
+    return 'deleted'
+  })
 }
 
 // ---- Draft ----

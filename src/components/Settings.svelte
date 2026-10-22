@@ -30,6 +30,7 @@
     onupdate,
     onclose,
     oneditplan,
+    onsplit,
   }: {
     db: LogbookDB
     data: TodayData
@@ -39,7 +40,11 @@
     onupdate: () => void
     onclose: () => void
     oneditplan: (dayId: string) => void
+    /** Open "Your split". */
+    onsplit: () => void
   } = $props()
+
+  const splitDays = $derived(activeDays(data.days).length)
 
   const liftDays = $derived(activeDays(data.days).filter((d) => d.type === 'lift'))
   let planCounts = $state.raw<Record<string, number>>({})
@@ -185,6 +190,11 @@
 
 <h2 class="label section">Training</h2>
 <ul class="list">
+  <li>
+    <button type="button" class="row" onclick={onsplit}>
+      <span>Your split</span><span class="caption">{splitDays} days ›</span>
+    </button>
+  </li>
   <li>
     <button type="button" class="row" onclick={() => (sheet = 'rest')}>
       <span>Rest timer</span><span class="caption num">{restLabel(restSeconds)} ›</span>
