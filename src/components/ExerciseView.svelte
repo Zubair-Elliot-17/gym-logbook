@@ -105,10 +105,13 @@
   }
   .stats {
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--s2);
     margin: 0 0 var(--s3);
+  }
+  /* Three tiles: the third (volume) takes a full row */
+  .stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
   .stat {
     padding: var(--s3) var(--s2);

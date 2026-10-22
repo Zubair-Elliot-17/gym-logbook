@@ -151,6 +151,7 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--s2);
+    container-type: inline-size;
   }
   /* A logged set, as on Today: an inked stamp */
   .set {
@@ -163,6 +164,7 @@
       inset 0 0 0 3px var(--ink),
       inset 0 0 0 4px var(--paper);
     font-size: var(--fs-num);
+    font-size: min(var(--fs-num), 5.2cqi);
     white-space: nowrap;
   }
   .pr {
