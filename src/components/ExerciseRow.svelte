@@ -4,6 +4,8 @@
   import { equipmentOf } from '../lib/catalog'
   import { formatWeight, type Ghost } from '../lib/logic'
   import { formatPlates, plateLoad } from '../lib/plates'
+  import { barAndPlates, spokenUnit, stepIn, toUnit } from '../lib/units'
+  import { units } from '../lib/units.svelte'
   import type { LiftRow } from '../lib/today'
 
   let {
@@ -43,8 +45,9 @@
   /** Barbell lifts: what to load for the next set. */
   const plates = $derived.by(() => {
     if (equipmentOf(row.exercise) !== 'barbell' || next?.weightKg == null) return null
-    const load = plateLoad(next.weightKg)
-    return load && formatPlates(load)
+    const { bar, plates } = barAndPlates(units.current)
+    const load = plateLoad(toUnit(next.weightKg, units.current), bar, plates)
+    return load && formatPlates(load, units.current)
   })
 
   function cancel() {
@@ -82,11 +85,12 @@
   }
 
   function text(g: Ghost) {
-    return `${g.weightKg === null ? '—' : formatWeight(g.weightKg)} × ${g.reps}`
+    return `${g.weightKg === null ? '—' : formatWeight(g.weightKg, units.current)} × ${g.reps}`
   }
 
   function label(g: Ghost) {
-    const w = g.weightKg === null ? 'weight not set' : g.weightKg === 0 ? 'bodyweight' : `${formatWeight(g.weightKg)} kilos`
+    const w =
+      g.weightKg === null ? 'weight not set' : g.weightKg === 0 ? 'bodyweight' : `${formatWeight(g.weightKg, units.current)} ${spokenUnit(units.current)}`
     const isPR = g.logged && row.prIds.has(g.logged.id)
     const state = isPR ? 'PR' : g.logged ? 'logged' : g.next ? 'next' : 'ghost'
     const action = g.logged ? 'tap to edit' : g.weightKg === null ? 'tap to enter weight' : 'tap to log, hold to edit'
@@ -162,8 +166,8 @@
       <button type="button" class="link" onclick={onextra}>+ set</button>
       {#if next}
         <div class="adjust">
-          <button type="button" class="btn" aria-label="Lower next set by {row.exercise.stepKg} kilos" onclick={() => onadjust(-1)}>−</button>
-          <button type="button" class="btn" aria-label="Raise next set by {row.exercise.stepKg} kilos" onclick={() => onadjust(1)}>+</button>
+          <button type="button" class="btn" aria-label="Lower next set by {stepIn(row.exercise.stepKg, units.current)} {spokenUnit(units.current)}" onclick={() => onadjust(-1)}>−</button>
+          <button type="button" class="btn" aria-label="Raise next set by {stepIn(row.exercise.stepKg, units.current)} {spokenUnit(units.current)}" onclick={() => onadjust(1)}>+</button>
         </div>
       {/if}
     </div>

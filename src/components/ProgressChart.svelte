@@ -2,23 +2,22 @@
   // A trend line in graphite: one point per session, PR sessions ringed in stamp red.
   // Plain SVG scaled by viewBox; the numbers it shows are also in the session list below it.
   import { formatDate, type ChartPoint } from '../lib/history'
-  import { formatWeight } from '../lib/logic'
 
-  let { points, unit, label }: { points: ChartPoint[]; unit: 'kg' | 'reps'; label: string } = $props()
+  let { points, unit, label }: { points: ChartPoint[]; unit: 'kg' | 'lb' | 'reps'; label: string } = $props()
 
   const W = 320
   const H = 150
   const PAD = { top: 12, right: 10, bottom: 22, left: 44 }
 
-  const fmt = (v: number) => (unit === 'kg' ? formatWeight(v) : String(v))
+  const fmt = (v: number) => String(Number(v.toFixed(1)))
 
   const geo = $derived.by(() => {
     const values = points.map((p) => p.value)
     let lo = Math.min(...values)
     let hi = Math.max(...values)
     if (hi === lo) {
-      lo -= unit === 'kg' ? 5 : 2
-      hi += unit === 'kg' ? 5 : 2
+      lo -= unit === 'reps' ? 2 : 5
+      hi += unit === 'reps' ? 2 : 5
     }
     const pad = (hi - lo) * 0.08
     lo = Math.max(0, lo - pad)

@@ -163,7 +163,7 @@ Corners are 6px on sets, chips and buttons (a stamped block, not a bubble), 5px 
 ## Accessibility
 
 Carried over from v1:
-- **Set labels:** "<exercise>, set N, W kilos by R, <ghost|next|logged|PR>, <action>".
+- **Set labels:** "<exercise>, set N, W kilos (or pounds) by R, <ghost|next|logged|PR>, <action>".
 - **Toasts:** role=status, and role=alert for save failures.
 - **Sheets:** role=dialog, with focus moved to the title on open.
 - **Reduced motion:** honored everywhere.
@@ -178,4 +178,5 @@ Carried over from v1:
 | 2026-10-01 | Replaced with "Field Book" | /design-consultation: user's memorable thing is "Mine, personal". Research showed Hevy and Strong share Inter + white/navy + blue. A Claude subagent independently proposed the field-book direction; adopted its yellow paper, fonts and stamps. Codex unavailable. |
 | 2026-10-01 | Added the welcome flow, exercise table and day editor in the Field Book style | User feedback: no intro on open; exercises must be your own |
 | 2026-10-22 | Added History, exercise progress and the rest timer in the Field Book style | A logbook you can't read back isn't finished. Peers (Hevy, Strong) all ship history, per-exercise charts and a rest timer. No new colours: the chart is graphite, and stamp red still only marks PRs. |
+| 2026-10-22 | Plate load, This week card and kg/lb | Plates and weekly totals remove arithmetic between sets; lb opens the app to US lifters. Storage stays kg so units are display-only and reversible. |
 | 2026-10-22 | The split is editable in Settings; seed.ts only seeds it | "Any lifter later" needs it, and changing your own program shouldn't need a deploy. An edited split is never overwritten by a newer seed. |

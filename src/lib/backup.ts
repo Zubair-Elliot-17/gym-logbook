@@ -160,6 +160,7 @@ const SHAPES = {
     welcomed: (v: unknown) => v === undefined || isBool(v),
     restSeconds: (v: unknown) => v === undefined || (isInt(0)(v) && (v as number) <= 600),
     customSplit: (v: unknown) => v === undefined || isBool(v),
+    units: (v: unknown) => v === undefined || v === 'kg' || v === 'lb',
     lastExportAt: orNull(isIso),
     lastExportCycle: orNull(isInt(1)),
   },

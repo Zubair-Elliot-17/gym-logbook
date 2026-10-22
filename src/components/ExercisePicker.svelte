@@ -2,7 +2,9 @@
   // The exercise table: tabs by muscle (opening on the day's own muscles), search across everything,
   // tap to add (stays open so you can add several), or type your own and pick its type.
   import { CATALOG, musclesFor, type CatalogEntry, type Muscle } from '../lib/catalog'
-  import type { Equipment, Exercise } from '../lib/seed'
+  import { stepFor, type Equipment, type Exercise } from '../lib/seed'
+  import { stepIn } from '../lib/units'
+  import { units } from '../lib/units.svelte'
   import Sheet from './Sheet.svelte'
 
   let {
@@ -48,11 +50,12 @@
   })
   const exact = $derived(q !== '' && (CATALOG.some((c) => c.name.toLowerCase() === q) || own.some((e) => e.name.toLowerCase() === q)))
 
-  const types: { value: Equipment; label: string; step: string }[] = [
-    { value: 'barbell', label: 'Barbell', step: '−/+ moves 2.5 kg' },
-    { value: 'dumbbell', label: 'Dumbbell', step: '−/+ moves 2 kg' },
-    { value: 'machine', label: 'Machine / cable / bodyweight', step: '−/+ moves 2.5 kg' },
-  ]
+  const step = (e: Equipment) => `−/+ moves ${stepIn(stepFor(e), units.current)} ${units.current}`
+  const types: { value: Equipment; label: string; step: string }[] = $derived([
+    { value: 'barbell', label: 'Barbell', step: step('barbell') },
+    { value: 'dumbbell', label: 'Dumbbell', step: step('dumbbell') },
+    { value: 'machine', label: 'Machine / cable / bodyweight', step: step('machine') },
+  ])
 </script>
 
 <Sheet title={creating ? `New: ${query.trim()}` : `Add to ${dayName}`} {onclose}>

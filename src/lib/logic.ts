@@ -3,6 +3,7 @@
 
 import type { CycleDay, DayExercise } from './seed'
 import type { DayLog, SetRow } from './db'
+import { toUnit, type Unit } from './units'
 
 export interface Position {
   cycleNumber: number
@@ -208,8 +209,9 @@ export function prSetIds(exerciseSets: SetRow[]): Set<string> {
 
 // ---- Display ----
 
-export function formatWeight(kg: number): string {
-  return kg === 0 ? 'BW' : String(Number(kg.toFixed(2)))
+/** A stored weight in the chosen unit, without the unit: "62.5", "135"; 0 is "BW". */
+export function formatWeight(kg: number, unit: Unit = 'kg'): string {
+  return kg === 0 ? 'BW' : String(Number(toUnit(kg, unit).toFixed(2)))
 }
 
 /**
@@ -217,14 +219,14 @@ export function formatWeight(kg: number): string {
  * Same weight throughout: "30 kg × 10, 10, 8". Mixed: "30×10, 30×10, 27.5×8". 0 kg is "BW".
  * More than 5 sets are truncated with "…".
  */
-export function formatLastTime(sets: SetRow[]): string {
+export function formatLastTime(sets: SetRow[], unit: Unit = 'kg'): string {
   if (sets.length === 0) return ''
   const shown = sets.slice(0, 5)
   const more = sets.length > 5 ? ', …' : ''
   const w0 = sets[0].weightKg
   if (sets.every((s) => s.weightKg === w0)) {
-    const label = w0 === 0 ? 'BW' : `${formatWeight(w0)} kg`
+    const label = w0 === 0 ? 'BW' : `${formatWeight(w0, unit)} ${unit}`
     return `${label} × ${shown.map((s) => s.reps).join(', ')}${more}`
   }
-  return shown.map((s) => `${formatWeight(s.weightKg)}×${s.reps}`).join(', ') + more
+  return shown.map((s) => `${formatWeight(s.weightKg, unit)}×${s.reps}`).join(', ') + more
 }

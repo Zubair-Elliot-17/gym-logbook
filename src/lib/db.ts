@@ -14,6 +14,7 @@ import {
   type Exercise,
 } from './seed'
 import { activeDays, checkJump, nextDay, type JumpResult, type Position } from './logic'
+import type { Unit } from './units'
 
 export interface SetRow {
   id: string
@@ -61,6 +62,8 @@ export interface AppState {
   restSeconds?: number
   /** The user has edited the split in the app: seed.ts no longer touches the days. */
   customSplit?: boolean
+  /** How weights are shown and typed. Storage is always kilos. Missing = kg. */
+  units?: Unit
   lastExportAt: string | null
   /** cycleNumber when the last export was recorded; the reminder fires 2 cycles later. */
   lastExportCycle: number | null
@@ -434,6 +437,12 @@ export async function movePlanRow(d: LogbookDB, cycleDayId: string, exerciseId: 
     ;[reordered[i], reordered[j]] = [reordered[j], reordered[i]]
     await d.dayExercises.bulkPut(reordered.map((p, k) => ({ ...p, order: k + 1 })))
   })
+}
+
+/** Show and type weights in kg or lb. Stored data stays in kilos. */
+export async function setUnits(d: LogbookDB, units: Unit): Promise<void> {
+  if (units !== 'kg' && units !== 'lb') throw new RangeError('Units must be kg or lb')
+  await d.state.update('app', { units })
 }
 
 /** Rest timer length in seconds; 0 turns it off. */
