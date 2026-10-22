@@ -9,6 +9,7 @@
   import PlanEditor from './components/PlanEditor.svelte'
   import Welcome from './components/Welcome.svelte'
   import Settings from './components/Settings.svelte'
+  import SplitEditor from './components/SplitEditor.svelte'
   import Toasts from './components/Toasts.svelte'
   import WeekStrip from './components/WeekStrip.svelte'
   import { backupOverdue } from './lib/backup'
@@ -24,6 +25,7 @@
     | { kind: 'today' }
     | { kind: 'settings' }
     | { kind: 'history'; exerciseId?: string }
+    | { kind: 'split' }
     | { kind: 'plan'; dayId: string; back: 'today' | 'settings' }
   let view = $state<View>({ kind: 'today' })
   /** Welcome was finished in an earlier session: greet with "Welcome back" (not right after the welcome). */
@@ -124,6 +126,10 @@
       onback={() => (view = { kind: back })}
     />
   </main>
+{:else if view.kind === 'split'}
+  <main class="col">
+    <SplitEditor {db} {data} onback={openSettings} />
+  </main>
 {:else if view.kind === 'history'}
   <main class="col">
     <History {db} exerciseId={view.exerciseId} onclose={() => (view = { kind: 'today' })} />
@@ -139,6 +145,10 @@
       onupdate={updateApp}
       onclose={() => (view = { kind: 'today' })}
       oneditplan={(dayId) => openPlan(dayId, 'settings')}
+      onsplit={() => {
+        view = { kind: 'split' }
+        window.scrollTo(0, 0)
+      }}
     />
   </main>
 {:else}

@@ -138,6 +138,7 @@ Corners are 6px on sets, chips and buttons (a stamped block, not a bubble), 5px 
 - **Rest timer:** a row in the Finish bar, sheet fill + 2px ink border: "REST" label, the countdown in Martian Mono 26px, then −15 / +15 / Skip (1px ink outline). A 3px ink rule drains along the bottom. At zero it becomes a logged-set stamp reading "REST OVER · NEXT SET" for 4 s.
 - **History rows:** two lines between 1px rules. Line 1: name (body bold) and date as a typed label with "›". Line 2: the summary in Martian Mono 87.5% pencil ("5 SETS · 2 PRS · 2,160 KG"), with a PR stamp on the right. Months are typed labels. Days / Exercises is a two-tab switch in the muscle-tab style.
 - **Past day:** sets as logged stamps (read-only look, tap to edit), PR stamps as on Today, exercise volume as a label.
+- **Your split:** rows like the day editor: an ink square with the day's number, name over a typed "LIFTING / REST · TODAY" label, then ↑ ↓ × tools. Edit sheet: a 1.5px ink name field and a Lifting / Rest pair where the chosen one is a logged-set stamp. Rule refusals show inside the sheet with a dashed border.
 - **Exercise progress:** three stat tiles (1px rule border, label over a Martian Mono figure), then the chart on a sheet card with a 1.5px ink border: graphite line and dots, PR sessions ringed in stamp red, min/max ruled lines with typed values. The session list repeats every number in the chart.
 - **Focus-visible:** 2px stamp outline, offset 2px.
 
@@ -175,3 +176,4 @@ Carried over from v1:
 | 2026-10-01 | Replaced with "Field Book" | /design-consultation: user's memorable thing is "Mine, personal". Research showed Hevy and Strong share Inter + white/navy + blue. A Claude subagent independently proposed the field-book direction; adopted its yellow paper, fonts and stamps. Codex unavailable. |
 | 2026-10-01 | Added the welcome flow, exercise table and day editor in the Field Book style | User feedback: no intro on open; exercises must be your own |
 | 2026-10-22 | Added History, exercise progress and the rest timer in the Field Book style | A logbook you can't read back isn't finished. Peers (Hevy, Strong) all ship history, per-exercise charts and a rest timer. No new colours: the chart is graphite, and stamp red still only marks PRs. |
+| 2026-10-22 | The split is editable in Settings; seed.ts only seeds it | "Any lifter later" needs it, and changing your own program shouldn't need a deploy. An edited split is never overwritten by a newer seed. |

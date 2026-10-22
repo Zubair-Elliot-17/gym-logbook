@@ -14,6 +14,8 @@ Vite + Svelte 5 + Dexie (IndexedDB) + vite-plugin-pwa. No backend.
 - **Exercise progress**: History → Exercises, or tap an exercise's name on Today. Best estimated 1RM
   (Epley), heaviest set, volume, a trend chart with PR sessions ringed, and every session.
   Bodyweight exercises track reps.
+- **Your split** (Settings → Training): rename days, add up to 10, reorder, switch lifting/rest, remove.
+  A removed day with history is archived, so its sets stay in History.
 - **Your exercises**: pick from the library or type your own per lifting day, with sets, starting weight
   and reps. Rest days log activities (walk, mobility…) in one tap.
 - **Backup**: export / import a JSON file (validated, with an undo snapshot); a reminder every 2 cycles.
@@ -21,7 +23,8 @@ Vite + Svelte 5 + Dexie (IndexedDB) + vite-plugin-pwa. No backend.
 
 ## Code map
 
-- `src/lib/seed.ts`: the training split (days). Edit + bump `SEED_VERSION` to change it.
+- `src/lib/seed.ts`: the starting split (days). Bump `SEED_VERSION` to ship a change; installs whose
+  split was edited in the app (`state.customSplit`) keep their own.
 - `src/lib/db.ts`: Dexie schema and every write. `logic.ts`: pure rules (cycle, ghosts, PRs).
 - `src/lib/today.ts`, `history.ts`, `rest.ts`: pure view models for Today, History and the rest timer.
 - `src/components/`: one Svelte component per screen or sheet. UI rules live in `DESIGN.md`.
