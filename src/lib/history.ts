@@ -4,6 +4,7 @@
 import type { CycleDay, Exercise } from './seed'
 import type { Activity, DayLog, LogbookDB, SetRow } from './db'
 import { formatWeight, prSetIds } from './logic'
+import { toUnit, type Unit } from './units'
 
 export interface HistoryData {
   days: CycleDay[]
@@ -114,20 +115,25 @@ export function sessions(data: HistoryData): Session[] {
 }
 
 /** One-line summary for a history row: "5 sets · 2 PRs · 3,240 kg", "Walk 30 min", "Skipped". */
-export function sessionSummary(s: Session): string {
+export function sessionSummary(s: Session, unit: Unit = 'kg'): string {
   if (s.skipped) return 'Skipped'
   if (s.type === 'rest' || s.setCount === 0) {
     return s.activities.length ? s.activities.map((a) => `${a.kind} ${a.minutes} min`).join(' · ') : 'Rested'
   }
   const parts = [`${s.setCount} ${s.setCount === 1 ? 'set' : 'sets'}`]
   if (s.prIds.size) parts.push(`${s.prIds.size} ${s.prIds.size === 1 ? 'PR' : 'PRs'}`)
-  if (s.volumeKg > 0) parts.push(`${formatKg(s.volumeKg)} kg`)
+  if (s.volumeKg > 0) parts.push(formatVolume(s.volumeKg, unit))
   return parts.join(' · ')
 }
 
 /** Whole kilos with thousands separators: 3240 → "3,240". */
 export function formatKg(kg: number): string {
   return Math.round(kg).toLocaleString('en-GB')
+}
+
+/** Volume with its unit: "3,240 kg", "7,143 lb". */
+export function formatVolume(kg: number, unit: Unit = 'kg'): string {
+  return `${formatKg(toUnit(kg, unit))}\u00a0${unit}`
 }
 
 /** "Tue 14 Oct", plus the year when it isn't this year. */
@@ -255,7 +261,7 @@ export interface ExerciseIndexRow {
 }
 
 /** Every exercise with at least one logged set, most recently trained first. */
-export function exerciseIndex(data: HistoryData): ExerciseIndexRow[] {
+export function exerciseIndex(data: HistoryData, unit: Unit = 'kg'): ExerciseIndexRow[] {
   const exById = new Map(data.exercises.map((e) => [e.id, e]))
   const ids = new Map<string, string>()
   for (const s of data.sets) if ((ids.get(s.exerciseId) ?? '') < s.loggedAt) ids.set(s.exerciseId, s.loggedAt)
@@ -267,14 +273,14 @@ export function exerciseIndex(data: HistoryData): ExerciseIndexRow[] {
         exercise: exById.get(id) ?? { id, name: id, stepKg: 2.5 },
         lastDate,
         sessions: st.sessions,
-        bestText: bestText(st),
+        bestText: bestText(st, unit),
       }
     })
 }
 
-export function bestText(st: ExerciseStats): string {
+export function bestText(st: ExerciseStats, unit: Unit = 'kg'): string {
   if (!st.best) return ''
-  return st.metric === 'reps' ? `Best ${st.best.value} reps` : `Best ${formatWeight(st.best.value)} kg e1RM`
+  return st.metric === 'reps' ? `Best ${st.best.value} reps` : `Best ${formatWeight(st.best.value, unit)}\u00a0${unit} e1RM`
 }
 
 export interface ChartPoint {
@@ -343,10 +349,10 @@ export function weekSummary(data: HistoryData, now = new Date()): { thisWeek: We
 }
 
 /** "4 days · 52 sets · 14,200 kg" (and PRs when there are any). */
-export function weekLine(w: WeekStats): string {
+export function weekLine(w: WeekStats, unit: Unit = 'kg'): string {
   if (w.sets === 0) return 'Nothing logged'
   const parts = [`${w.days} ${w.days === 1 ? 'day' : 'days'}`, `${w.sets} ${w.sets === 1 ? 'set' : 'sets'}`]
-  if (w.volumeKg > 0) parts.push(`${formatKg(w.volumeKg)} kg`)
+  if (w.volumeKg > 0) parts.push(formatVolume(w.volumeKg, unit))
   if (w.prs) parts.push(`${w.prs} ${w.prs === 1 ? 'PR' : 'PRs'}`)
   return parts.join(' · ')
 }

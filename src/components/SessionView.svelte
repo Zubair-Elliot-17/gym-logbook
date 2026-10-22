@@ -2,7 +2,9 @@
   // One finished day: every exercise with its sets as inked stamps (PRs stamped red), or the day's
   // activities. Tap a set to fix a typo or delete it; history is the user's own record.
   import { deleteSet, restoreSet, updateSet, type LogbookDB, type SetRow } from '../lib/db'
-  import { formatKg, formatDate, sessionSummary, type Session } from '../lib/history'
+  import { formatDate, formatVolume, sessionSummary, type Session } from '../lib/history'
+  import { spokenUnit } from '../lib/units'
+  import { units } from '../lib/units.svelte'
   import { formatWeight } from '../lib/logic'
   import type { Exercise } from '../lib/seed'
   import { attempt, toasts } from '../lib/toast.svelte'
@@ -41,7 +43,7 @@
   }
 
   function label(ex: Exercise, s: SetRow, n: number) {
-    const w = s.weightKg === 0 ? 'bodyweight' : `${formatWeight(s.weightKg)} kilos`
+    const w = s.weightKg === 0 ? 'bodyweight' : `${formatWeight(s.weightKg, units.current)} ${spokenUnit(units.current)}`
     return `${ex.name}, set ${n}, ${w} by ${s.reps}${session.prIds.has(s.id) ? ', PR' : ''}, tap to edit`
   }
 </script>
@@ -50,7 +52,7 @@
   <button type="button" class="link" onclick={onback}>{backLabel}</button>
   <h1 class="display">{session.dayName}</h1>
   <p class="label">{formatDate(session.date)} · cycle #{session.cycleNumber}</p>
-  <p class="label">{sessionSummary(session)}</p>
+  <p class="label">{sessionSummary(session, units.current)}</p>
 </header>
 
 {#if session.skipped}
@@ -66,7 +68,7 @@
       {:else}
         <h2 class="name">{e.exercise.name}</h2>
       {/if}
-      {#if vol > 0}<span class="label">{formatKg(vol)} kg</span>{/if}
+      {#if vol > 0}<span class="label">{formatVolume(vol, units.current)}</span>{/if}
     </div>
     <div class="sets">
       {#each e.sets as s, i (s.id)}
@@ -76,7 +78,7 @@
           aria-label={label(e.exercise, s, i + 1)}
           onclick={() => (editing = { exercise: e.exercise, set: s, n: i + 1 })}
         >
-          <span>{formatWeight(s.weightKg)} × {s.reps}</span>
+          <span>{formatWeight(s.weightKg, units.current)} × {s.reps}</span>
           {#if session.prIds.has(s.id)}<span class="pr" aria-hidden="true">▲ PR</span>{/if}
         </button>
       {/each}

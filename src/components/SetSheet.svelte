@@ -3,6 +3,8 @@
   import Sheet from './Sheet.svelte'
   import Stepper from './Stepper.svelte'
   import { formatPlates, plateLoad } from '../lib/plates'
+  import { barAndPlates, fromUnit, stepIn, toUnit } from '../lib/units'
+  import { units } from '../lib/units.svelte'
 
   let {
     exerciseName,
@@ -33,7 +35,7 @@
 
   // Initial values are copied once; the sheet edits its own state.
   // svelte-ignore state_referenced_locally
-  let weight = $state(weightKg === null ? '' : String(weightKg))
+  let weight = $state(weightKg === null ? '' : String(toUnit(weightKg, units.current)))
   // svelte-ignore state_referenced_locally
   let repsText = $state(String(reps))
 
@@ -45,12 +47,13 @@
 
   const plates = $derived.by(() => {
     if (!barbell || !valid) return null
-    const load = plateLoad(parsedWeight)
-    return load && formatPlates(load)
+    const { bar, plates } = barAndPlates(units.current)
+    const load = plateLoad(parsedWeight, bar, plates)
+    return load && formatPlates(load, units.current)
   })
 
   function submit() {
-    if (valid) onlog(Math.round(parsedWeight * 100) / 100, parsedReps)
+    if (valid) onlog(fromUnit(parsedWeight, units.current), parsedReps)
   }
 </script>
 
@@ -59,12 +62,12 @@
   subtitle={lastText ? `Last time: ${lastText}` : ''}
   {onclose}
 >
-  <Stepper label="Weight (kg)" bind:value={weight} step={stepKg} decimal onGo={submit} />
+  <Stepper label="Weight ({units.current})" bind:value={weight} step={stepIn(stepKg, units.current)} decimal onGo={submit} />
   <Stepper label="Reps" bind:value={repsText} step={1} min={1} onGo={submit} />
   {#if plates}
     <p class="caption">Load: <span class="num plates">{plates}</span></p>
   {/if}
-  <p class="caption">Tap a number to type it. 0 kg = bodyweight.</p>
+  <p class="caption">Tap a number to type it. 0 {units.current} = bodyweight.</p>
   <button type="button" class="btn primary" disabled={!valid} onclick={submit}>
     {mode === 'edit' ? 'Save' : 'Log set'}
   </button>

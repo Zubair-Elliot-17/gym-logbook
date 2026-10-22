@@ -15,7 +15,8 @@
   import { backupOverdue } from './lib/backup'
   import { db, openDb } from './lib/db'
   import { isStandalone, needRefresh, offlineReady, requestPersistentStorage, updateApp } from './lib/pwa'
-  import { loadToday, pickBanner, type TodayData } from './lib/today'
+  import { loadToday, pickBanner, unitOf, type TodayData } from './lib/today'
+  import { units } from './lib/units.svelte'
   import { toasts } from './lib/toast.svelte'
 
   let status = $state<'loading' | 'error' | 'ready'>('loading')
@@ -59,6 +60,10 @@
   onMount(() => {
     void start()
     return () => sub?.unsubscribe()
+  })
+
+  $effect(() => {
+    if (data) units.current = unitOf(data.state)
   })
 
   const banner = $derived(

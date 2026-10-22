@@ -1,6 +1,7 @@
 // Everything the Today screen needs, read in one liveQuery, and the pure view model built from it.
 
 import type { CycleDay, DayExercise, Exercise } from './seed'
+import type { Unit } from './units'
 import { getDraft, getState, positionOf, type Activity, type AppState, type DayLog, type Draft, type LogbookDB, type SetRow } from './db'
 import {
   dayNumber,
@@ -13,6 +14,9 @@ import {
   type Ghost,
   type Position,
 } from './logic'
+
+/** The weight unit the user picked; kilos until they change it. */
+export const unitOf = (state: { units?: Unit }): Unit => state.units ?? 'kg'
 
 export interface TodayData {
   state: AppState
@@ -87,7 +91,7 @@ export function buildLiftRows(data: TodayData): LiftRow[] {
         exercise,
         plan: planRow,
         ghosts,
-        lastText: formatLastTime(last),
+        lastText: formatLastTime(last, unitOf(data.state)),
         prIds: new Set(logged.filter((s) => prs.has(s.id)).map((s) => s.id)),
         done: ghosts.length > 0 && ghosts.every((g) => g.logged),
         needsEditor: ghosts.length === 0,
@@ -120,7 +124,7 @@ export function finishSummary(data: TodayData, rows: LiftRow[]): FinishSummary {
   const prs = rows.flatMap((r) =>
     r.ghosts
       .filter((g) => g.logged && r.prIds.has(g.logged.id))
-      .map((g) => `${r.exercise.name} ${formatWeight(g.logged!.weightKg)} × ${g.logged!.reps}`),
+      .map((g) => `${r.exercise.name} ${formatWeight(g.logged!.weightKg, unitOf(data.state))} × ${g.logged!.reps}`),
   )
   const parts = [`${name} done`, `${sets} ${sets === 1 ? 'set' : 'sets'}`]
   if (prs.length) parts.push(`${prs.length} ${prs.length === 1 ? 'PR' : 'PRs'}`)

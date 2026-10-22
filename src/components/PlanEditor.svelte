@@ -16,6 +16,7 @@
     type PlanValues,
   } from '../lib/db'
   import { formatWeight } from '../lib/logic'
+  import { units } from '../lib/units.svelte'
   import type { DayExercise, Equipment, Exercise } from '../lib/seed'
   import { attempt, toasts } from '../lib/toast.svelte'
   import ExercisePicker from './ExercisePicker.svelte'
@@ -59,7 +60,7 @@
   const fail = 'Couldn’t save that change.'
 
   function summary(p: DayExercise) {
-    const w = p.seedWeightKg === null ? 'weight on first set' : `${formatWeight(p.seedWeightKg)}${p.seedWeightKg === 0 ? '' : ' kg'}`
+    const w = p.seedWeightKg === null ? 'weight on first set' : `${formatWeight(p.seedWeightKg, units.current)}${p.seedWeightKg === 0 ? '' : ` ${units.current}`}`
     return `${p.plannedSets} × ${p.seedReps} · ${w}`
   }
 

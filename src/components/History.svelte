@@ -17,6 +17,8 @@
     weekSummary,
     type HistoryData,
   } from '../lib/history'
+  import { toUnit } from '../lib/units'
+  import { units } from '../lib/units.svelte'
   import ExerciseView from './ExerciseView.svelte'
   import SessionView from './SessionView.svelte'
 
@@ -44,7 +46,7 @@
   const list = $derived(data ? sessions(data) : [])
   const months = $derived(byMonth(list))
   const lifted = $derived(list.filter((s) => s.setCount > 0).length)
-  const index = $derived(data ? exerciseIndex(data) : [])
+  const index = $derived(data ? exerciseIndex(data, units.current) : [])
   const week = $derived(data ? weekSummary(data) : null)
 
   type Frame = { kind: 'session'; key: string } | { kind: 'exercise'; id: string }
@@ -114,9 +116,9 @@
       <dl class="figs">
         <div><dt class="label">Days</dt><dd class="num">{w.days}</dd></div>
         <div><dt class="label">Sets</dt><dd class="num">{w.sets}</dd></div>
-        <div><dt class="label">Volume</dt><dd class="num">{formatKg(w.volumeKg)} <small>kg</small></dd></div>
+        <div><dt class="label">Volume</dt><dd class="num">{formatKg(toUnit(w.volumeKg, units.current))} <small>{units.current}</small></dd></div>
       </dl>
-      <p class="caption">Last week: <span class="num">{weekLine(week.lastWeek)}</span></p>
+      <p class="caption">Last week: <span class="num">{weekLine(week.lastWeek, units.current)}</span></p>
     </section>
   {/if}
 
@@ -145,7 +147,7 @@
                 <span class="label">{formatDate(s.date)} ›</span>
               </span>
               <span class="line">
-                <span class="summary" class:skipped={s.skipped}>{sessionSummary(s)}</span>
+                <span class="summary" class:skipped={s.skipped}>{sessionSummary(s, units.current)}</span>
                 {#if s.prIds.size}<span class="pr" aria-hidden="true">▲ PR</span>{/if}
               </span>
             </button>

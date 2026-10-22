@@ -32,7 +32,7 @@ export function plateLoad(totalKg: number, barKg = BAR_KG, plates = PLATES_KG): 
 }
 
 /** "20 + 10 + 2.5 a side", with repeats grouped: "2 × 20 + 5 a side". */
-export function formatPlates(load: PlateLoad): string {
+export function formatPlates(load: PlateLoad, unit = 'kg'): string {
   const groups: [number, number][] = []
   for (const p of load.perSide) {
     const last = groups.at(-1)
@@ -40,5 +40,5 @@ export function formatPlates(load: PlateLoad): string {
     else groups.push([p, 1])
   }
   const text = groups.map(([p, n]) => (n > 1 ? `${n} × ${p}` : String(p))).join(' + ')
-  return load.shortKg > 0 ? `${text} a side (${load.shortKg} kg short)` : `${text} a side`
+  return load.shortKg > 0 ? `${text} a side (${load.shortKg} ${unit} short)` : `${text} a side`
 }

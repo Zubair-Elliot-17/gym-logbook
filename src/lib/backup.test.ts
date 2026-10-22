@@ -23,6 +23,7 @@ import {
   logSet,
   openDb,
   setRestSeconds,
+  setUnits,
   updatePlanRow,
 } from './db'
 
@@ -149,6 +150,10 @@ describe('import', () => {
     const file = parseBackup(JSON.stringify(old))
     await importBackup(d, file)
     expect((await getState(d)).restSeconds).toBeUndefined()
+
+    await setUnits(d, 'lb')
+    expect((await roundTrip()).state.units).toBe('lb')
+    expect(() => parseBackup(JSON.stringify({ ...old, state: { ...old.state, units: 'stone' } }))).toThrow(/units/)
 
     const bad = { ...old, state: { ...old.state, restSeconds: 'long' } }
     expect(() => parseBackup(JSON.stringify(bad))).toThrow(/restSeconds/)

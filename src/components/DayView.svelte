@@ -23,6 +23,8 @@
   import type { Equipment, Exercise } from '../lib/seed'
   import { buildLiftRows, dayHeading, finishSummary, loggedCount, type FinishSummary, type LiftRow, type TodayData } from '../lib/today'
   import { restSecondsOf } from '../lib/rest'
+  import { stepWeight } from '../lib/units'
+  import { units } from '../lib/units.svelte'
   import { rest } from '../lib/rest.svelte'
   import { attempt, toasts } from '../lib/toast.svelte'
   import ExercisePicker from './ExercisePicker.svelte'
@@ -85,7 +87,7 @@
     if (ok && saved) {
       rest.start(restSecondsOf(data.state))
       const row0 = saved
-      toasts.undo(`Set logged · ${formatWeight(weightKg)} × ${reps}`, () => {
+      toasts.undo(`Set logged · ${formatWeight(weightKg, units.current)} × ${reps}`, () => {
         rest.stop()
         void attempt(() => deleteSet(db, row0.id), 'Couldn’t undo that set.')
       })
@@ -95,7 +97,7 @@
   function adjust(row: LiftRow, dir: 1 | -1) {
     const next = row.ghosts.find((g) => g.next)
     if (!next) return
-    const w = Math.max(0, Math.round(((next.weightKg ?? 0) + dir * row.exercise.stepKg) * 100) / 100)
+    const w = stepWeight(next.weightKg ?? 0, row.exercise.stepKg, dir, units.current)
     void attempt(() => setGhostWeight(db, row.exercise.id, next.setIndex, w), 'Couldn’t save that change.')
   }
 

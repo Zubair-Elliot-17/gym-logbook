@@ -3,6 +3,8 @@
   // Bodyweight work tracks reps instead of kilos.
   import { bestText, chartPoints, exerciseSessions, exerciseStats, formatDate, formatKg, type HistoryData } from '../lib/history'
   import { formatLastTime, formatWeight } from '../lib/logic'
+  import { toUnit } from '../lib/units'
+  import { units } from '../lib/units.svelte'
   import ProgressChart from './ProgressChart.svelte'
 
   let {
@@ -23,7 +25,9 @@
   const exercise = $derived(data.exercises.find((e) => e.id === exerciseId))
   const list = $derived(exerciseSessions(exerciseId, data))
   const st = $derived(exerciseStats(exerciseId, data))
-  const points = $derived(chartPoints(list))
+  const u = $derived(units.current)
+  // e1RM is stored in kilos: show it in the chosen unit
+  const points = $derived(chartPoints(list).map((p) => (st.metric === 'reps' ? p : { ...p, value: toUnit(p.value, u) })))
   const reps = $derived(st.metric === 'reps')
 </script>
 
@@ -48,25 +52,25 @@
     {:else}
       <div class="stat">
         <dt class="label">Best e1RM</dt>
-        <dd class="num">{formatWeight(st.best.value)} <small>kg</small></dd>
+        <dd class="num">{formatWeight(st.best.value, u)} <small>{u}</small></dd>
       </div>
       <div class="stat">
         <dt class="label">Heaviest</dt>
-        <dd class="num">{formatWeight(st.heaviest!.weightKg)} × {st.heaviest!.reps}</dd>
+        <dd class="num">{formatWeight(st.heaviest!.weightKg, u)} × {st.heaviest!.reps}</dd>
       </div>
     {/if}
     <div class="stat">
       <dt class="label">{reps ? 'Total reps' : 'Volume'}</dt>
       <dd class="num">
-        {#if reps}{data.sets.filter((s) => s.exerciseId === exerciseId).reduce((n, s) => n + s.reps, 0)}{:else}{formatKg(st.volumeKg)} <small>kg</small>{/if}
+        {#if reps}{data.sets.filter((s) => s.exerciseId === exerciseId).reduce((n, s) => n + s.reps, 0)}{:else}{formatKg(toUnit(st.volumeKg, u))} <small>{u}</small>{/if}
       </dd>
     </div>
   </dl>
 
   {#if points.length > 1}
-    <ProgressChart {points} unit={reps ? 'reps' : 'kg'} label={reps ? 'Best set' : 'Estimated 1-rep max'} />
+    <ProgressChart {points} unit={reps ? 'reps' : u} label={reps ? 'Best set' : 'Estimated 1-rep max'} />
   {:else}
-    <p class="caption hint">Log it again to see a trend. {bestText(st)}.</p>
+    <p class="caption hint">Log it again to see a trend. {bestText(st, u)}.</p>
   {/if}
 {/if}
 
@@ -80,7 +84,7 @@
           <span class="label">{s.finished ? `${formatDate(s.date)} ›` : 'Today'}</span>
         </span>
         <span class="line">
-          <span class="sets num">{formatLastTime(s.sets)}</span>
+          <span class="sets num">{formatLastTime(s.sets, u)}</span>
           {#if s.hasPR}<span class="pr" aria-label="PR">▲ PR</span>{/if}
         </span>
       </button>

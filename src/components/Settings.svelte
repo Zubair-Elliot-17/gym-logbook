@@ -15,9 +15,10 @@
     shareExport,
     type BackupFile,
   } from '../lib/backup'
-  import { goBackDay, setRestSeconds, type LogbookDB } from '../lib/db'
+  import { goBackDay, setRestSeconds, setUnits, type LogbookDB } from '../lib/db'
+  import type { Unit } from '../lib/units'
   import { REST_CHOICES, restLabel, restSecondsOf } from '../lib/rest'
-  import { daysAgo, lastFinish, type TodayData } from '../lib/today'
+  import { daysAgo, lastFinish, unitOf, type TodayData } from '../lib/today'
   import { attempt, toasts } from '../lib/toast.svelte'
   import Sheet from './Sheet.svelte'
 
@@ -63,7 +64,13 @@
   let reading = $state(false)
   let importError = $state('')
   let download = $state<{ url: string; name: string } | null>(null)
-  let sheet = $state<'import' | 'restore' | 'goback' | 'install' | 'rest' | null>(null)
+  let sheet = $state<'import' | 'restore' | 'goback' | 'install' | 'rest' | 'units' | null>(null)
+  const unit = $derived(unitOf(data.state))
+
+  function pickUnits(u: Unit) {
+    sheet = null
+    void attempt(() => setUnits(db, u), 'Couldn’t save that change.')
+  }
   const restSeconds = $derived(restSecondsOf(data.state))
 
   function pickRest(seconds: number) {
@@ -200,6 +207,11 @@
       <span>Rest timer</span><span class="caption num">{restLabel(restSeconds)} ›</span>
     </button>
   </li>
+  <li>
+    <button type="button" class="row" onclick={() => (sheet = 'units')}>
+      <span>Weights in</span><span class="caption num">{unit} ›</span>
+    </button>
+  </li>
 </ul>
 
 <h2 class="label section">Backup &amp; app</h2>
@@ -256,6 +268,14 @@
         <button type="button" role="radio" class="choice num" aria-checked={s === restSeconds} onclick={() => pickRest(s)}>
           {restLabel(s)}
         </button>
+      {/each}
+    </div>
+  </Sheet>
+{:else if sheet === 'units'}
+  <Sheet title="Weights in" subtitle="Your log is kept in kilos; this only changes what you see and type." onclose={() => (sheet = null)}>
+    <div class="choices two" role="radiogroup" aria-label="Weight unit">
+      {#each ['kg', 'lb'] as const as u (u)}
+        <button type="button" role="radio" class="choice num" aria-checked={u === unit} onclick={() => pickUnits(u)}>{u}</button>
       {/each}
     </div>
   </Sheet>
@@ -335,6 +355,9 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--s2);
+  }
+  .choices.two {
+    grid-template-columns: 1fr 1fr;
   }
   .choice {
     min-height: var(--set-h);
