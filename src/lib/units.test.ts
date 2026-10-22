@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { barAndPlates, fromUnit, stepIn, stepWeight, toUnit } from './units'
+import { barAndPlates, barChoice, barToStore, fromUnit, stepIn, stepWeight, toUnit } from './units'
 import { formatLastTime, formatWeight } from './logic'
 import { formatVolume, weekLine } from './history'
 import { formatPlates, plateLoad } from './plates'
@@ -52,5 +52,18 @@ describe('text in pounds', () => {
     expect(formatPlates(plateLoad(225, bar, plates)!, 'lb')).toBe('2 × 45 a side')
     expect(formatPlates(plateLoad(140, bar, plates)!, 'lb')).toBe('45 + 2.5 a side')
     expect(formatPlates(plateLoad(137.5, bar, plates)!, 'lb')).toBe('45 a side (2.5 lb short)')
+  })
+})
+
+describe('bar choice', () => {
+  it('stores the standard bar as none, lighter bars in kilos, and reads them back per unit', () => {
+    expect(barToStore(20, 'kg')).toBeNull()
+    expect(barToStore(45, 'lb')).toBeNull()
+    expect(barToStore(10, 'kg')).toBe(10)
+    expect(barChoice(undefined, 'lb')).toBe(45)
+    expect(barChoice(barToStore(35, 'lb')!, 'lb')).toBe(35)
+    expect(barChoice(15, 'kg')).toBe(15)
+    expect(barAndPlates('kg', 10).bar).toBe(10)
+    expect(barAndPlates('lb', barToStore(25, 'lb')!).bar).toBe(25)
   })
 })

@@ -299,6 +299,7 @@
     lastText={sheetRow.lastText}
     stepKg={sheetRow.exercise.stepKg}
     barbell={equipmentOf(sheetRow.exercise) === 'barbell'}
+    barKg={sheetRow.exercise.barKg}
     weightKg={v.weightKg}
     reps={v.reps}
     mode={sheet.ghost?.logged ? 'edit' : 'log'}

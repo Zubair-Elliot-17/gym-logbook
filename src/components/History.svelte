@@ -93,7 +93,7 @@
   {/key}
 {:else if top?.kind === 'exercise' && data}
   {#key top}
-    <ExerciseView {data} exerciseId={top.id} backLabel={backLabel()} onback={back} onsession={(key) => push({ kind: 'session', key })} />
+    <ExerciseView {db} {data} exerciseId={top.id} backLabel={backLabel()} onback={back} onsession={(key) => push({ kind: 'session', key })} />
   {/key}
 {:else}
   <header class="head">

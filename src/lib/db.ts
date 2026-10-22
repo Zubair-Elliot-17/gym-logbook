@@ -360,6 +360,38 @@ export async function ensureCatalogExercise(d: LogbookDB, entry: CatalogEntry): 
   })
 }
 
+export class ExerciseError extends Error {}
+
+/** Rename any exercise (library ones too: it's your log). Names stay unique, ignoring case. */
+export async function renameExercise(d: LogbookDB, exerciseId: string, name: string): Promise<void> {
+  const trimmed = name.trim().replace(/\s+/g, ' ')
+  if (trimmed === '') throw new ExerciseError('The exercise needs a name')
+  if (trimmed.length > 40) throw new ExerciseError('Keep it to 40 letters')
+  await d.transaction('rw', d.exercises, async () => {
+    const clash = await d.exercises.filter((e) => e.id !== exerciseId && e.name.toLowerCase() === trimmed.toLowerCase()).first()
+    if (clash) throw new ExerciseError(`You already have “${clash.name}”`)
+    if ((await d.exercises.update(exerciseId, { name: trimmed })) === 0) throw new Error(`Unknown exercise ${exerciseId}`)
+  })
+}
+
+/** The bar a barbell exercise uses, in kilos; null goes back to the standard bar. */
+export async function setBar(d: LogbookDB, exerciseId: string, barKg: number | null): Promise<void> {
+  if (barKg !== null && (!Number.isFinite(barKg) || barKg <= 0 || barKg > 50)) throw new RangeError('Bar must be 0 to 50 kg')
+  const ex = await d.exercises.get(exerciseId)
+  if (!ex) throw new Error(`Unknown exercise ${exerciseId}`)
+  const { barKg: _old, ...rest } = ex
+  await d.exercises.put(barKg === null ? rest : { ...rest, barKg })
+}
+
+/** Delete an exercise you never logged, and take it off every day. Logged ones stay: they're history. */
+export async function deleteExercise(d: LogbookDB, exerciseId: string): Promise<void> {
+  await d.transaction('rw', [d.exercises, d.dayExercises, d.sets, d.drafts], async () => {
+    if ((await setCount(d, exerciseId)) > 0) throw new ExerciseError('It has logged sets, so it stays in your history')
+    await d.dayExercises.filter((p) => p.exerciseId === exerciseId).delete()
+    await d.exercises.delete(exerciseId)
+  })
+}
+
 // ---- Day plans (the user's own exercises per lifting day) ----
 
 export interface PlanValues {

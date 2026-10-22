@@ -5,15 +5,19 @@
   import { formatLastTime, formatWeight } from '../lib/logic'
   import { toUnit } from '../lib/units'
   import { units } from '../lib/units.svelte'
+  import type { LogbookDB } from '../lib/db'
+  import ExerciseSheet from './ExerciseSheet.svelte'
   import ProgressChart from './ProgressChart.svelte'
 
   let {
+    db,
     data,
     exerciseId,
     backLabel,
     onback,
     onsession,
   }: {
+    db: LogbookDB
     data: HistoryData
     exerciseId: string
     backLabel: string
@@ -29,10 +33,14 @@
   // e1RM is stored in kilos: show it in the chosen unit
   const points = $derived(chartPoints(list).map((p) => (st.metric === 'reps' ? p : { ...p, value: toUnit(p.value, u) })))
   const reps = $derived(st.metric === 'reps')
+  let editing = $state(false)
 </script>
 
 <header class="head">
-  <button type="button" class="link" onclick={onback}>{backLabel}</button>
+  <div class="nav">
+    <button type="button" class="link" onclick={onback}>{backLabel}</button>
+    {#if exercise}<button type="button" class="link" onclick={() => (editing = true)}>Edit</button>{/if}
+  </div>
   <h1 class="display">{exercise?.name ?? exerciseId}</h1>
   <p class="label">
     {st.sessions}
@@ -93,11 +101,19 @@
 </ul>
 <div class="end"></div>
 
+{#if editing && exercise}
+  <ExerciseSheet {db} {exercise} onclose={() => (editing = false)} />
+{/if}
+
 <style>
   .head {
     margin: var(--s2) 0 var(--s4);
     display: grid;
     gap: var(--s2);
+  }
+  .nav {
+    display: flex;
+    justify-content: space-between;
   }
   h1 {
     font-size: 38px;

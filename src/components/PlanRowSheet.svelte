@@ -13,6 +13,7 @@
     onsave,
     onremove,
     onclose,
+    onedit,
   }: {
     name: string
     stepKg: number
@@ -20,6 +21,8 @@
     onsave: (v: PlanValues) => void
     onremove: () => void
     onclose: () => void
+    /** Rename it, set its bar, or delete it. */
+    onedit?: () => void
   } = $props()
 
   // svelte-ignore state_referenced_locally
@@ -57,4 +60,5 @@
   </p>
   <button type="button" class="btn primary" disabled={!valid} onclick={submit}>Save</button>
   <button type="button" class="btn" onclick={onremove}>Remove from this day</button>
+  {#if onedit}<button type="button" class="link" onclick={onedit}>Rename, bar or delete ›</button>{/if}
 </Sheet>

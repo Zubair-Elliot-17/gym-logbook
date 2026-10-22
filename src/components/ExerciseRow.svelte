@@ -45,7 +45,7 @@
   /** Barbell lifts: what to load for the next set. */
   const plates = $derived.by(() => {
     if (equipmentOf(row.exercise) !== 'barbell' || next?.weightKg == null) return null
-    const { bar, plates } = barAndPlates(units.current)
+    const { bar, plates } = barAndPlates(units.current, row.exercise.barKg)
     const load = plateLoad(toUnit(next.weightKg, units.current), bar, plates)
     return load && formatPlates(load, units.current)
   })

@@ -33,7 +33,32 @@ export function stepWeight(kg: number, stepKg: number, dir: number, unit: Unit):
 /** Read aloud: "kilos" / "pounds". */
 export const spokenUnit = (unit: Unit) => (unit === 'kg' ? 'kilos' : 'pounds')
 
-/** Bar and plates for the plate calculator, in the chosen unit. */
-export function barAndPlates(unit: Unit): { bar: number; plates: number[] } {
-  return unit === 'kg' ? { bar: 20, plates: [25, 20, 15, 10, 5, 2.5, 1.25] } : { bar: 45, plates: [45, 35, 25, 10, 5, 2.5] }
+/** Bar and plates for the plate calculator, in the chosen unit. A set barKg (EZ, women's) replaces the bar. */
+export function barAndPlates(unit: Unit, barKg?: number): { bar: number; plates: number[] } {
+  const std = unit === 'kg' ? { bar: 20, plates: [25, 20, 15, 10, 5, 2.5, 1.25] } : { bar: 45, plates: [45, 35, 25, 10, 5, 2.5] }
+  return barKg === undefined ? std : { ...std, bar: Math.round(toUnit(barKg, unit) * 2) / 2 }
+}
+
+/** Bars to pick from, in the chosen unit: Olympic (the standard), women's, EZ / technique. */
+export const BAR_CHOICES: Record<Unit, { value: number; label: string }[]> = {
+  kg: [
+    { value: 20, label: 'Olympic 20' },
+    { value: 15, label: 'Women’s 15' },
+    { value: 10, label: 'EZ / technique 10' },
+  ],
+  lb: [
+    { value: 45, label: 'Olympic 45' },
+    { value: 35, label: 'Women’s 35' },
+    { value: 25, label: 'EZ / technique 25' },
+  ],
+}
+
+/** A picked bar as stored kilos: the standard bar is stored as "none" so it follows the unit. */
+export function barToStore(value: number, unit: Unit): number | null {
+  return value === BAR_CHOICES[unit][0].value ? null : fromUnit(value, unit)
+}
+
+/** The stored bar as a choice value in the chosen unit. */
+export function barChoice(barKg: number | undefined, unit: Unit): number {
+  return barKg === undefined ? BAR_CHOICES[unit][0].value : Math.round(toUnit(barKg, unit) * 2) / 2
 }

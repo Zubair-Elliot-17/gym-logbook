@@ -20,6 +20,7 @@
   import type { DayExercise, Equipment, Exercise } from '../lib/seed'
   import { attempt, toasts } from '../lib/toast.svelte'
   import ExercisePicker from './ExercisePicker.svelte'
+  import ExerciseSheet from './ExerciseSheet.svelte'
   import PlanRowSheet from './PlanRowSheet.svelte'
 
   let {
@@ -43,6 +44,7 @@
   let exercises = $state.raw<Exercise[]>([])
   let picking = $state(false)
   let editing = $state<DayExercise | null>(null)
+  let editingExercise = $state<Exercise | null>(null)
 
   onMount(() => {
     // svelte-ignore state_referenced_locally
@@ -150,7 +152,15 @@
     onsave={(v) => save(p, v)}
     onremove={() => remove(p)}
     onclose={() => (editing = null)}
+    onedit={() => {
+      editingExercise = byId.get(p.exerciseId) ?? null
+      editing = null
+    }}
   />
+{/if}
+
+{#if editingExercise}
+  <ExerciseSheet {db} exercise={editingExercise} onclose={() => (editingExercise = null)} />
 {/if}
 
 <style>
