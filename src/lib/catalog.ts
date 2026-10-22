@@ -109,4 +109,8 @@ const byId = new Map(CATALOG.map((c) => [c.id, c]))
 const byName = new Map(CATALOG.map((c) => [c.name.toLowerCase(), c]))
 
 export const catalogEntry = (id: string) => byId.get(id)
+
+/** An exercise's equipment: its own, or its library entry's for rows saved before it was stored. */
+export const equipmentOf = (ex: { id: string; equipment?: Equipment }): Equipment | undefined =>
+  ex.equipment ?? byId.get(ex.id)?.equipment
 export const catalogByName = (name: string) => byName.get(name.trim().toLowerCase())

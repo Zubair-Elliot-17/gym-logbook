@@ -1,7 +1,9 @@
 <script lang="ts">
   // One exercise: "Last time ›", ghost sets (tap = log, hold 450 ms = editor), −/+ for the next ghost,
   // "+ set". Collapses to one line once every set is logged (2A).
+  import { equipmentOf } from '../lib/catalog'
   import { formatWeight, type Ghost } from '../lib/logic'
+  import { formatPlates, plateLoad } from '../lib/plates'
   import type { LiftRow } from '../lib/today'
 
   let {
@@ -38,6 +40,12 @@
   const next = $derived(row.ghosts.find((g) => g.next) ?? null)
   const loggedCount = $derived(row.ghosts.filter((g) => g.logged).length)
   const collapsed = $derived(row.done && !expanded)
+  /** Barbell lifts: what to load for the next set. */
+  const plates = $derived.by(() => {
+    if (equipmentOf(row.exercise) !== 'barbell' || next?.weightKg == null) return null
+    const load = plateLoad(next.weightKg)
+    return load && formatPlates(load)
+  })
 
   function cancel() {
     clearTimeout(timer)
@@ -144,6 +152,10 @@
           </button>
         {/each}
       </div>
+    {/if}
+
+    {#if plates}
+      <p class="plates caption">Load: <span class="num">{plates}</span></p>
     {/if}
 
     <div class="controls">
@@ -319,6 +331,13 @@
     right: -6px;
     transform: rotate(-6deg);
     line-height: 1.3;
+  }
+  .plates {
+    margin-top: var(--s2);
+  }
+  .plates .num {
+    color: var(--ink);
+    font-size: var(--fs-caption);
   }
   .controls {
     display: flex;
