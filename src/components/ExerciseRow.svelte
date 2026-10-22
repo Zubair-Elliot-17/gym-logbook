@@ -12,6 +12,7 @@
     onadjust,
     onextra,
     ontoggle,
+    onprogress,
   }: {
     row: LiftRow
     expanded: boolean
@@ -21,7 +22,11 @@
     onadjust: (dir: 1 | -1) => void
     onextra: () => void
     ontoggle: () => void
+    /** Open this exercise's progress (only once it has history). */
+    onprogress?: () => void
   } = $props()
+
+  const hasHistory = $derived(row.lastText !== '' || row.ghosts.some((g) => g.logged))
 
   const HOLD_MS = 450
   const MOVE_PX = 10
@@ -90,7 +95,18 @@
     </button>
   {:else}
     <div class="head">
-      <h3 class="name">{row.exercise.name}</h3>
+      <h3 class="name">
+        {#if onprogress && hasHistory}
+          <button type="button" class="progress" aria-label="{row.exercise.name} progress" onclick={onprogress}
+            >{row.exercise.name}<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
+              ><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M2 12l4-4 3 3 5-6"
+              /></svg
+            ></button
+          >
+        {:else}
+          {row.exercise.name}
+        {/if}
+      </h3>
       {#if row.done}
         <button type="button" class="link" onclick={ontoggle} aria-expanded="true">Collapse</button>
       {/if}
@@ -159,6 +175,18 @@
   .name {
     font-size: 17px;
     font-weight: 700;
+  }
+  .progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    font-weight: inherit;
+    text-align: left;
+  }
+  .progress svg {
+    flex: none;
+    color: var(--pencil);
   }
   .summary {
     width: 100%;
