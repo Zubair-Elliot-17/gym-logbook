@@ -22,7 +22,8 @@ Vite + Svelte 5 + Dexie (IndexedDB) + vite-plugin-pwa. No backend.
 - **Your split** (Settings → Training): rename days, add up to 10, reorder, switch lifting/rest, remove.
   A removed day with history is archived, so its sets stay in History.
 - **Your exercises**: pick from the library or type your own per lifting day, with sets, starting weight
-  and reps. Rest days log activities (walk, mobility…) in one tap.
+  and reps. Rename any exercise, set a lighter bar (women's, EZ) for the plate maths, or delete
+  one you never logged: from its row in Your exercises, or Edit on its progress screen. Rest days log activities (walk, mobility…) in one tap.
 - **Backup**: export / import a JSON file (validated, with an undo snapshot); a reminder every 2 cycles.
 - **Offline**: installable PWA; fonts and app are precached.
 

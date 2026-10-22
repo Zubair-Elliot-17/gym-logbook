@@ -20,6 +20,8 @@ export interface Exercise {
   stepKg: number
   /** Set when created; older rows fall back to the library entry (catalog.equipmentOf). */
   equipment?: Equipment
+  /** Barbell lifts on a lighter bar (EZ, women's). Missing = the standard bar for your unit. */
+  barKg?: number
 }
 
 export interface DayExercise {

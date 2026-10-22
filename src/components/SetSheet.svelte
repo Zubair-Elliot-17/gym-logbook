@@ -18,6 +18,7 @@
     ondelete,
     onclose,
     barbell = false,
+    barKg,
   }: {
     exerciseName: string
     setNumber: number
@@ -31,6 +32,8 @@
     onclose: () => void
     /** Show what to load on the bar for the typed weight. */
     barbell?: boolean
+    /** The exercise's own bar, if lighter than standard. */
+    barKg?: number
   } = $props()
 
   // Initial values are copied once; the sheet edits its own state.
@@ -47,7 +50,7 @@
 
   const plates = $derived.by(() => {
     if (!barbell || !valid) return null
-    const { bar, plates } = barAndPlates(units.current)
+    const { bar, plates } = barAndPlates(units.current, barKg)
     const load = plateLoad(parsedWeight, bar, plates)
     return load && formatPlates(load, units.current)
   })

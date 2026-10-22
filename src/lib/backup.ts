@@ -123,6 +123,7 @@ const SHAPES = {
     name: isId,
     stepKg: (v: unknown) => isNum(0)(v) && (v as number) > 0,
     equipment: (v: unknown) => v === undefined || v === 'barbell' || v === 'dumbbell' || v === 'machine',
+    barKg: (v: unknown) => v === undefined || (isNum(0)(v) && (v as number) > 0 && (v as number) <= 50),
   },
   dayExercise: {
     cycleDayId: isId,
