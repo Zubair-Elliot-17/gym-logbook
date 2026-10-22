@@ -29,7 +29,7 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: calc(var(--bar-h) + env(safe-area-inset-bottom) + var(--s2));
+    bottom: calc(var(--bar-h) + var(--rest-h, 0px) + env(safe-area-inset-bottom) + var(--s2));
     max-width: 480px;
     margin: 0 auto;
     padding: 0 var(--s4);

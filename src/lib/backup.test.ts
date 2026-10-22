@@ -11,7 +11,20 @@ import {
   restoreSnapshot,
   shareExport,
 } from './backup'
-import { LogbookDB, SEED, addToPlan, createExercise, finishDay, getState, jumpTo, logActivity, logSet, openDb, updatePlanRow } from './db'
+import {
+  LogbookDB,
+  SEED,
+  addToPlan,
+  createExercise,
+  finishDay,
+  getState,
+  jumpTo,
+  logActivity,
+  logSet,
+  openDb,
+  setRestSeconds,
+  updatePlanRow,
+} from './db'
 
 let d: LogbookDB
 let n = 0
@@ -124,6 +137,21 @@ describe('import', () => {
     expect(after.state).toMatchObject({ currentCycleDayId: 'active-rest', cycleNumber: 1, startPicked: true })
     expect(await other.exercises.get(shrug.id)).toBeDefined()
     await other.delete()
+  })
+
+  it('carries the rest timer setting; older files without it still import', async () => {
+    await setRestSeconds(d, 120)
+    expect((await roundTrip()).state.restSeconds).toBe(120)
+    await expect(setRestSeconds(d, -5)).rejects.toThrow(RangeError)
+
+    const old = await buildExport(d)
+    delete (old.state as { restSeconds?: number }).restSeconds
+    const file = parseBackup(JSON.stringify(old))
+    await importBackup(d, file)
+    expect((await getState(d)).restSeconds).toBeUndefined()
+
+    const bad = { ...old, state: { ...old.state, restSeconds: 'long' } }
+    expect(() => parseBackup(JSON.stringify(bad))).toThrow(/restSeconds/)
   })
 
   it('restores your exercises and day plans from the file; only the split comes from seed.ts', async () => {

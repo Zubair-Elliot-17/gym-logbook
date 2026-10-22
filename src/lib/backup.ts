@@ -153,6 +153,7 @@ const SHAPES = {
     seedVersion: isInt(0),
     startPicked: isBool,
     welcomed: (v: unknown) => v === undefined || isBool(v),
+    restSeconds: (v: unknown) => v === undefined || (isInt(0)(v) && (v as number) <= 600),
     lastExportAt: orNull(isIso),
     lastExportCycle: orNull(isInt(1)),
   },

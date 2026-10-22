@@ -134,7 +134,11 @@ Corners are 6px on sets, chips and buttons (a stamped block, not a bubble), 5px 
 - **Welcome (first open only):** display "WELCOME" at 64px, three numbered how-it-works steps on ink squares, then "Your exercises" (one row per lifting day in display caps, with a "Set up ›" / "Edit ›" action), then the day picker.
 - **Exercise table:** a search field (1.5px ink), muscle tabs as typed labels (the selected tab is ink fill), and rows with the name over the equipment, plus a square "+" that becomes an ink "✓" once added. "+ Add '…' as your own exercise" is a dashed row.
 - **Your exercises (day editor):** rows of name + a typed summary ("3 × 5 · 140 kg"), with ↑ ↓ × tools at 48px tall, and a dashed "+ Add exercises" button.
-- **Toasts:** sheet colour with a 2px ink border. Save-failed toasts use a dashed border.
+- **Toasts:** sheet colour with a 2px ink border. Save-failed toasts use a dashed border. They sit above the Finish bar and the rest timer (`--rest-h`).
+- **Rest timer:** a row in the Finish bar, sheet fill + 2px ink border: "REST" label, the countdown in Martian Mono 26px, then −15 / +15 / Skip (1px ink outline). A 3px ink rule drains along the bottom. At zero it becomes a logged-set stamp reading "REST OVER · NEXT SET" for 4 s.
+- **History rows:** two lines between 1px rules. Line 1: name (body bold) and date as a typed label with "›". Line 2: the summary in Martian Mono 87.5% pencil ("5 SETS · 2 PRS · 2,160 KG"), with a PR stamp on the right. Months are typed labels. Days / Exercises is a two-tab switch in the muscle-tab style.
+- **Past day:** sets as logged stamps (read-only look, tap to edit), PR stamps as on Today, exercise volume as a label.
+- **Exercise progress:** three stat tiles (1px rule border, label over a Martian Mono figure), then the chart on a sheet card with a 1.5px ink border: graphite line and dots, PR sessions ringed in stamp red, min/max ruled lines with typed values. The session list repeats every number in the chart.
 - **Focus-visible:** 2px stamp outline, offset 2px.
 
 ## Do's and Don'ts
@@ -151,7 +155,7 @@ Corners are 6px on sets, chips and buttons (a stamped block, not a bubble), 5px 
 - **Approach:** intentional.
 - **Easing:** enter ease-out, exit ease-in.
 - **Duration:** micro 120ms, short 200ms.
-- **The one authored moment:** logging a set stamps it with a 120ms press (scale 0.96 → 1) as it fills with ink. Under reduced motion the fill is instant. The long-press fill (450ms) and the Finish card stay as before.
+- **The one authored moment:** logging a set stamps it with a 120ms press (scale 0.96 → 1) as it fills with ink. Under reduced motion the fill is instant. The long-press fill (450ms) and the Finish card stay as before. "Rest over" reuses the same stamp; the timer's drain moves linearly in 250 ms steps (instant under reduced motion).
 
 ## Accessibility
 
@@ -160,6 +164,8 @@ Carried over from v1:
 - **Toasts:** role=status, and role=alert for save failures.
 - **Sheets:** role=dialog, with focus moved to the title on open.
 - **Reduced motion:** honored everywhere.
+- **Rest timer:** role=timer labelled "Rest, N seconds left"; "Rest over" is a role=status.
+- **Chart:** role=img with a one-sentence summary (sessions, first → last, best); the session list below carries every value.
 
 ## Decisions Log
 
@@ -168,3 +174,4 @@ Carried over from v1:
 | 2026-10-01 | v1 "ink on paper" system (Instrument Sans + Barlow Condensed, red PR accent) | Ship v1 fast (/plan-design-review) |
 | 2026-10-01 | Replaced with "Field Book" | /design-consultation: user's memorable thing is "Mine, personal". Research showed Hevy and Strong share Inter + white/navy + blue. A Claude subagent independently proposed the field-book direction; adopted its yellow paper, fonts and stamps. Codex unavailable. |
 | 2026-10-01 | Added the welcome flow, exercise table and day editor in the Field Book style | User feedback: no intro on open; exercises must be your own |
+| 2026-10-22 | Added History, exercise progress and the rest timer in the Field Book style | A logbook you can't read back isn't finished. Peers (Hevy, Strong) all ship history, per-exercise charts and a rest timer. No new colours: the chart is graphite, and stamp red still only marks PRs. |

@@ -15,7 +15,8 @@
     shareExport,
     type BackupFile,
   } from '../lib/backup'
-  import { goBackDay, type LogbookDB } from '../lib/db'
+  import { goBackDay, setRestSeconds, type LogbookDB } from '../lib/db'
+  import { REST_CHOICES, restLabel, restSecondsOf } from '../lib/rest'
   import { daysAgo, lastFinish, type TodayData } from '../lib/today'
   import { attempt, toasts } from '../lib/toast.svelte'
   import Sheet from './Sheet.svelte'
@@ -57,7 +58,13 @@
   let reading = $state(false)
   let importError = $state('')
   let download = $state<{ url: string; name: string } | null>(null)
-  let sheet = $state<'import' | 'restore' | 'goback' | 'install' | null>(null)
+  let sheet = $state<'import' | 'restore' | 'goback' | 'install' | 'rest' | null>(null)
+  const restSeconds = $derived(restSecondsOf(data.state))
+
+  function pickRest(seconds: number) {
+    sheet = null
+    void attempt(() => setRestSeconds(db, seconds), 'Couldn’t save that change.')
+  }
   let pending = $state.raw<BackupFile | null>(null)
   let fileInput: HTMLInputElement
 
@@ -176,6 +183,15 @@
   {/each}
 </ul>
 
+<h2 class="label section">Training</h2>
+<ul class="list">
+  <li>
+    <button type="button" class="row" onclick={() => (sheet = 'rest')}>
+      <span>Rest timer</span><span class="caption num">{restLabel(restSeconds)} ›</span>
+    </button>
+  </li>
+</ul>
+
 <h2 class="label section">Backup &amp; app</h2>
 <ul class="list">
   {#if updateReady}
@@ -222,6 +238,16 @@
     <p>{finish.dayName} becomes today again. Sets and activities you logged stay where they are.</p>
     <button type="button" class="btn primary" onclick={confirmGoBack}>Go back to {finish.dayName}</button>
     <button type="button" class="btn" onclick={() => (sheet = null)}>Cancel</button>
+  </Sheet>
+{:else if sheet === 'rest'}
+  <Sheet title="Rest timer" subtitle="Counts down after each logged set." onclose={() => (sheet = null)}>
+    <div class="choices" role="radiogroup" aria-label="Rest length">
+      {#each REST_CHOICES as s (s)}
+        <button type="button" role="radio" class="choice num" aria-checked={s === restSeconds} onclick={() => pickRest(s)}>
+          {restLabel(s)}
+        </button>
+      {/each}
+    </div>
   </Sheet>
 {:else if sheet === 'install'}
   <Sheet title="Install to Home Screen" onclose={() => (sheet = null)}>
@@ -294,6 +320,25 @@
   }
   .row.strong {
     font-weight: 700;
+  }
+  .choices {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--s2);
+  }
+  .choice {
+    min-height: var(--set-h);
+    border: 1.5px dotted var(--pencil);
+    border-radius: var(--radius);
+    font-size: var(--fs-num);
+  }
+  .choice[aria-checked='true'] {
+    background: var(--ink);
+    color: var(--paper);
+    border: 0;
+    box-shadow:
+      inset 0 0 0 3px var(--ink),
+      inset 0 0 0 4px var(--paper);
   }
   .steps {
     margin: 0;
