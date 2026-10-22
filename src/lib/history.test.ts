@@ -13,6 +13,9 @@ import {
   sessionSummary,
   sessions,
   topSet,
+  weekLine,
+  weekStart,
+  weekSummary,
 } from './history'
 
 let d: LogbookDB
@@ -129,6 +132,34 @@ describe('one exercise', () => {
       ['Pull-up', 'Best 11 reps'],
       ['Bench press', 'Best 76\u00a0kg e1RM'],
     ])
+  })
+})
+
+describe('this week', () => {
+  it('starts on Monday at local midnight', () => {
+    expect(weekStart(new Date(2026, 9, 22, 18)).getTime()).toBe(new Date(2026, 9, 19).getTime()) // Thu → Mon
+    expect(weekStart(new Date(2026, 9, 19, 0, 30)).getTime()).toBe(new Date(2026, 9, 19).getTime()) // Mon
+    expect(weekStart(new Date(2026, 9, 25, 23)).getTime()).toBe(new Date(2026, 9, 19).getTime()) // Sun
+  })
+
+  it('totals this week and last week, counting today as you log', async () => {
+    await createExercise(d, 'Bench press', 'barbell')
+    const rows = [
+      await lift('bench-press', 60, 8),
+      await lift('bench-press', 60, 8),
+    ]
+    await finishDay(d)
+    const later = [await lift('bench-press', 65, 5)] // Lower, still open
+    // Pretend the first two were last Wednesday
+    const lastWed = new Date(2026, 9, 14, 18).toISOString()
+    for (const r of rows) await d.sets.update(r.id, { loggedAt: lastWed })
+    await d.sets.update(later[0].id, { loggedAt: new Date(2026, 9, 21, 18).toISOString() })
+
+    const { thisWeek, lastWeek } = weekSummary(await loadHistory(d), new Date(2026, 9, 22, 9))
+    expect(lastWeek).toEqual({ days: 1, sets: 2, volumeKg: 960, prs: 0 })
+    expect(thisWeek).toEqual({ days: 1, sets: 1, volumeKg: 325, prs: 1 })
+    expect(weekLine(thisWeek)).toBe('1 day · 1 set · 325\u00a0kg · 1 PR')
+    expect(weekLine({ days: 0, sets: 0, volumeKg: 0, prs: 0 })).toBe('Nothing logged')
   })
 })
 

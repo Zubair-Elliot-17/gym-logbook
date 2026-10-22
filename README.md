@@ -10,7 +10,8 @@ Vite + Svelte 5 + Dexie (IndexedDB) + vite-plugin-pwa. No backend.
   Barbell lifts show what to load each side (20 kg bar; 25 down to 1.25 kg plates).
 - **Rest timer**: starts when you log a set (default 1:30; −15 / +15 / Skip). Set it or turn it off in
   Settings → Training. It survives the app being closed between sets.
-- **History** (book icon on Today): every finished day newest first, by month, with sets, PRs and
+- **History** (book icon on Today): this week's days, sets, volume and PRs against last week, then
+  every finished day newest first, by month, with sets, PRs and
   volume. Open a day to see or fix its sets.
 - **Exercise progress**: History → Exercises, or tap an exercise's name on Today. Best estimated 1RM
   (Epley), heaviest set, volume, a trend chart with PR sessions ringed, and every session.
