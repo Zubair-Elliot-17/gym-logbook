@@ -340,7 +340,7 @@ export async function createExercise(d: LogbookDB, name: string, equipment: Equi
     if (existing) return existing
     const known = catalogByName(trimmed)
     if (known) return ensureCatalogExercise(d, known)
-    const ex: Exercise = { id: `custom-${uuid()}`, name: trimmed, stepKg: stepFor(equipment) }
+    const ex: Exercise = { id: `custom-${uuid()}`, name: trimmed, stepKg: stepFor(equipment), equipment }
     await d.exercises.add(ex)
     return ex
   })
@@ -351,7 +351,7 @@ export async function ensureCatalogExercise(d: LogbookDB, entry: CatalogEntry): 
   return d.transaction('rw', d.exercises, async () => {
     const existing = await d.exercises.get(entry.id)
     if (existing) return existing
-    const ex: Exercise = { id: entry.id, name: entry.name, stepKg: stepFor(entry.equipment) }
+    const ex: Exercise = { id: entry.id, name: entry.name, stepKg: stepFor(entry.equipment), equipment: entry.equipment }
     await d.exercises.add(ex)
     return ex
   })

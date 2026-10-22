@@ -18,6 +18,8 @@ export interface Exercise {
   id: string
   name: string
   stepKg: number
+  /** Set when created; older rows fall back to the library entry (catalog.equipmentOf). */
+  equipment?: Equipment
 }
 
 export interface DayExercise {

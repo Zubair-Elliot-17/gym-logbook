@@ -19,7 +19,7 @@
     type SetRow,
   } from '../lib/db'
   import { formatWeight, type Ghost } from '../lib/logic'
-  import type { CatalogEntry } from '../lib/catalog'
+  import { equipmentOf, type CatalogEntry } from '../lib/catalog'
   import type { Equipment, Exercise } from '../lib/seed'
   import { buildLiftRows, dayHeading, finishSummary, loggedCount, type FinishSummary, type LiftRow, type TodayData } from '../lib/today'
   import { restSecondsOf } from '../lib/rest'
@@ -296,6 +296,7 @@
     setNumber={v.setNumber}
     lastText={sheetRow.lastText}
     stepKg={sheetRow.exercise.stepKg}
+    barbell={equipmentOf(sheetRow.exercise) === 'barbell'}
     weightKg={v.weightKg}
     reps={v.reps}
     mode={sheet.ghost?.logged ? 'edit' : 'log'}

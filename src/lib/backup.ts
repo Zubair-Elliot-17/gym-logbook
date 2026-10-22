@@ -118,7 +118,12 @@ const orNull = (c: Check): Check => (v) => v === null || c(v)
 
 const SHAPES = {
   cycleDay: { id: isId, order: isInt(0), name: isStr, type: (v: unknown) => v === 'lift' || v === 'rest', archived: isBool },
-  exercise: { id: isId, name: isId, stepKg: (v: unknown) => isNum(0)(v) && (v as number) > 0 },
+  exercise: {
+    id: isId,
+    name: isId,
+    stepKg: (v: unknown) => isNum(0)(v) && (v as number) > 0,
+    equipment: (v: unknown) => v === undefined || v === 'barbell' || v === 'dumbbell' || v === 'machine',
+  },
   dayExercise: {
     cycleDayId: isId,
     exerciseId: isId,
