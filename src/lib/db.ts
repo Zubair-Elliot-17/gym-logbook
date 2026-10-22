@@ -57,6 +57,8 @@ export interface AppState {
   startPicked: boolean
   /** The welcome + exercise setup has been shown (missing on installs from before it existed). */
   welcomed?: boolean
+  /** Rest timer length after a logged set; 0 = off. Missing = the default (rest.ts). */
+  restSeconds?: number
   lastExportAt: string | null
   /** cycleNumber when the last export was recorded; the reminder fires 2 cycles later. */
   lastExportCycle: number | null
@@ -421,6 +423,12 @@ export async function movePlanRow(d: LogbookDB, cycleDayId: string, exerciseId: 
     ;[reordered[i], reordered[j]] = [reordered[j], reordered[i]]
     await d.dayExercises.bulkPut(reordered.map((p, k) => ({ ...p, order: k + 1 })))
   })
+}
+
+/** Rest timer length in seconds; 0 turns it off. */
+export async function setRestSeconds(d: LogbookDB, seconds: number): Promise<void> {
+  if (!Number.isInteger(seconds) || seconds < 0 || seconds > 600) throw new RangeError('Rest must be 0 to 600 seconds')
+  await d.state.update('app', { restSeconds: seconds })
 }
 
 /** The welcome + setup flow is done. */

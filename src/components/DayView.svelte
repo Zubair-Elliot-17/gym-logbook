@@ -22,12 +22,15 @@
   import type { CatalogEntry } from '../lib/catalog'
   import type { Equipment, Exercise } from '../lib/seed'
   import { buildLiftRows, dayHeading, finishSummary, loggedCount, type FinishSummary, type LiftRow, type TodayData } from '../lib/today'
+  import { restSecondsOf } from '../lib/rest'
+  import { rest } from '../lib/rest.svelte'
   import { attempt, toasts } from '../lib/toast.svelte'
   import ExercisePicker from './ExercisePicker.svelte'
   import ExerciseRow from './ExerciseRow.svelte'
   import FinishCard from './FinishCard.svelte'
   import SetSheet from './SetSheet.svelte'
   import RestDay from './RestDay.svelte'
+  import RestTimer from './RestTimer.svelte'
   import Sheet from './Sheet.svelte'
 
   let {
@@ -80,8 +83,12 @@
       saved = await logSet(db, { exerciseId: row.exercise.id, weightKg, reps })
     })
     if (ok && saved) {
+      rest.start(restSecondsOf(data.state))
       const row0 = saved
-      toasts.undo(`Set logged · ${formatWeight(weightKg)} × ${reps}`, () => void attempt(() => deleteSet(db, row0.id), 'Couldn’t undo that set.'))
+      toasts.undo(`Set logged · ${formatWeight(weightKg)} × ${reps}`, () => {
+        rest.stop()
+        void attempt(() => deleteSet(db, row0.id), 'Couldn’t undo that set.')
+      })
     }
   }
 
@@ -150,6 +157,7 @@
       return
     }
     sheet = null
+    rest.stop()
     const summary = finishSummary(data, rows)
     if (await attempt(() => finishDay(db), 'Couldn’t finish the day.')) card = { summary, at: Date.now() }
   }
@@ -275,6 +283,7 @@
 
 <div class="grow"></div>
 <div class="bar">
+  {#if isLift}<RestTimer />{/if}
   <button type="button" class="btn finish" class:solid={allDone} class:primary={!allDone} onclick={() => finish()}>
     Finish {data.day.name} →
   </button>
