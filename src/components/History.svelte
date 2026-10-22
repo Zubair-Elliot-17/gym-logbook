@@ -10,8 +10,11 @@
     exerciseIndex,
     formatDate,
     loadHistory,
+    formatKg,
     sessionSummary,
     sessions,
+    weekLine,
+    weekSummary,
     type HistoryData,
   } from '../lib/history'
   import ExerciseView from './ExerciseView.svelte'
@@ -42,6 +45,7 @@
   const months = $derived(byMonth(list))
   const lifted = $derived(list.filter((s) => s.setCount > 0).length)
   const index = $derived(data ? exerciseIndex(data) : [])
+  const week = $derived(data ? weekSummary(data) : null)
 
   type Frame = { kind: 'session'; key: string } | { kind: 'exercise'; id: string }
   // svelte-ignore state_referenced_locally
@@ -99,6 +103,22 @@
       {index.length === 1 ? 'exercise' : 'exercises'}
     </p>
   </header>
+
+  {#if week && (week.thisWeek.sets > 0 || week.lastWeek.sets > 0)}
+    {@const w = week.thisWeek}
+    <section class="week" aria-label="This week">
+      <div class="week-head">
+        <h2 class="label">This week</h2>
+        {#if w.prs}<span class="pr">▲ {w.prs} {w.prs === 1 ? 'PR' : 'PRs'}</span>{/if}
+      </div>
+      <dl class="figs">
+        <div><dt class="label">Days</dt><dd class="num">{w.days}</dd></div>
+        <div><dt class="label">Sets</dt><dd class="num">{w.sets}</dd></div>
+        <div><dt class="label">Volume</dt><dd class="num">{formatKg(w.volumeKg)} <small>kg</small></dd></div>
+      </dl>
+      <p class="caption">Last week: <span class="num">{weekLine(week.lastWeek)}</span></p>
+    </section>
+  {/if}
 
   <div class="tabs" role="tablist" aria-label="Show">
     <button type="button" role="tab" class="tab" aria-selected={tab === 'days'} onclick={() => (tab = 'days')}>Days</button>
@@ -163,6 +183,41 @@
   }
   .head .label {
     margin-top: var(--s2);
+  }
+  .week {
+    display: grid;
+    gap: var(--s2);
+    margin-bottom: var(--s4);
+    padding: var(--s3);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius);
+    background: var(--sheet);
+  }
+  .week-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .figs {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: var(--s2);
+    margin: 0;
+  }
+  .figs div {
+    display: grid;
+    gap: 2px;
+  }
+  .figs dd {
+    margin: 0;
+    font-size: 24px;
+  }
+  .figs small {
+    font-size: var(--fs-caption);
+    color: var(--pencil);
+  }
+  .week .caption .num {
+    font-size: var(--fs-caption);
   }
   .tabs {
     display: flex;

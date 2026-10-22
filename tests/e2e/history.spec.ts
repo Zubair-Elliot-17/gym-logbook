@@ -16,6 +16,9 @@ test('finished days land in History; a past set can be fixed', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Lower', level: 1 })).toBeVisible()
 
   await page.getByRole('button', { name: 'History' }).click()
+  const week = page.getByRole('region', { name: 'This week' })
+  await expect(week.getByText('Last week: Nothing logged')).toBeVisible()
+  await expect(week).toContainText(/Days\s*1\s*Sets\s*2\s*Volume\s*960\skg/)
   await page.getByRole('button', { name: /Upper.*2 sets · 960\skg/ }).click()
   await expect(page.getByRole('heading', { name: 'Upper', level: 1 })).toBeVisible()
 

@@ -300,3 +300,53 @@ export function byMonth<T extends { date: string }>(list: T[]): { month: string;
   }
   return groups
 }
+
+// ---- This week ----
+
+export interface WeekStats {
+  /** Days with at least one logged set. */
+  days: number
+  sets: number
+  volumeKg: number
+  prs: number
+}
+
+/** Local midnight on the Monday of the week containing `now`. */
+export function weekStart(now: Date): Date {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return d
+}
+
+/** Totals for sets logged in [from, to). Today's open day counts as you log it. */
+export function statsBetween(sets: SetRow[], prIds: Set<string>, from: Date, to: Date): WeekStats {
+  const lo = from.toISOString()
+  const hi = to.toISOString()
+  const inWeek = sets.filter((s) => s.loggedAt >= lo && s.loggedAt < hi)
+  return {
+    days: new Set(inWeek.map((s) => sessionKey(s.cycleNumber, s.cycleDayId))).size,
+    sets: inWeek.length,
+    volumeKg: inWeek.reduce((v, s) => v + s.weightKg * s.reps, 0),
+    prs: inWeek.filter((s) => prIds.has(s.id)).length,
+  }
+}
+
+/** This week (Monday on) and last week, for the card on top of History. */
+export function weekSummary(data: HistoryData, now = new Date()): { thisWeek: WeekStats; lastWeek: WeekStats } {
+  const start = weekStart(now)
+  const prev = new Date(start)
+  prev.setDate(prev.getDate() - 7)
+  const next = new Date(start)
+  next.setDate(next.getDate() + 7)
+  const prs = allPrIds(data.sets)
+  return { thisWeek: statsBetween(data.sets, prs, start, next), lastWeek: statsBetween(data.sets, prs, prev, start) }
+}
+
+/** "4 days · 52 sets · 14,200 kg" (and PRs when there are any). */
+export function weekLine(w: WeekStats): string {
+  if (w.sets === 0) return 'Nothing logged'
+  const parts = [`${w.days} ${w.days === 1 ? 'day' : 'days'}`, `${w.sets} ${w.sets === 1 ? 'set' : 'sets'}`]
+  if (w.volumeKg > 0) parts.push(`${formatKg(w.volumeKg)} kg`)
+  if (w.prs) parts.push(`${w.prs} ${w.prs === 1 ? 'PR' : 'PRs'}`)
+  return parts.join(' · ')
+}
